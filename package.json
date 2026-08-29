@@ -22,6 +22,7 @@
   "scripts": {
     "dev": "vite --config playground/vite.config.ts",
     "build": "tsc -p tsconfig.build.json --emitDeclarationOnly && vite build",
+    "prepare": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
