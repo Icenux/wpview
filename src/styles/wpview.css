@@ -266,3 +266,50 @@
   padding: 10px 16px;
   border-top: 1px solid var(--wpview-border);
 }
+
+.wpview-close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.wpview-close-button .wpview-icon-button {
+  background: var(--wpview-surface);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+}
+
+.wpview-context-menu {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px;
+  background: var(--wpview-surface);
+  border: 1px solid var(--wpview-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.wpview-context-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  background: none;
+  color: var(--wpview-fg);
+  border-radius: 6px;
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.wpview-context-menu__item:hover {
+  background: var(--wpview-surface-hover);
+}
+
+.wpview-context-menu__item--active {
+  color: var(--wpview-accent);
+}

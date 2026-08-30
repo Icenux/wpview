@@ -14,7 +14,12 @@ import { rotateImage } from './edit/rotate';
 import { Toolbar } from './ui/Toolbar';
 import { InfoPanel } from './ui/InfoPanel';
 import { SettingsPanel } from './ui/SettingsPanel';
+import { IconButton } from './ui/IconButton';
+import { ContextMenu } from './ui/ContextMenu';
+import type { ContextMenuItem } from './ui/ContextMenu';
 import {
+  ACTIONS,
+  ICON,
   emitDelete,
   emitEdit,
   emitFavorite,
@@ -55,6 +60,11 @@ export function WpView(props: WpViewProps) {
   const [infoOpenFor, setInfoOpenFor] = useState<string | null>(null);
   const [cropOpenFor, setCropOpenFor] = useState<string | null>(null);
   const [isPresenting, setIsPresenting] = useState(false);
+  // Ťuknutí na fotku schová/vrátí křížek + toolbar — stejný vzorec jako
+  // mobilní galerie. Klávesnice, swipe-down a Escape fungují bez ohledu na
+  // tenhle stav, jen se vizuálně schová chrome.
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null);
 
   const currentItem = items[index];
 
@@ -191,6 +201,90 @@ export function WpView(props: WpViewProps) {
     setIsPresenting((prev) => !prev);
   }, []);
 
+  const handleStageTap = useCallback(() => {
+    setChromeVisible((prev) => !prev);
+  }, []);
+
+  const handleStageContextMenu = useCallback((x: number, y: number) => {
+    setContextMenuPos({ x, y });
+  }, []);
+
+  // Menu odkazuje na akce konkrétní fotky — při přelistování je zastaralé.
+  useEffect(() => {
+    setContextMenuPos(null);
+  }, [index]);
+
+  const contextMenuItems = useMemo((): ContextMenuItem[] => {
+    if (!currentItem) return [];
+    const display = getDisplayState(currentItem.id);
+    const items: ContextMenuItem[] = [];
+    if (isActionEnabled('favorite', capabilities, handlers)) {
+      items.push({
+        id: 'favorite',
+        label: display.favorite ? 'Unfavorite' : 'Favorite',
+        iconPath: ACTIONS.favorite.iconPath,
+        active: display.favorite,
+        onClick: handleToggleFavorite,
+      });
+    }
+    if (isActionEnabled('rotate', capabilities, handlers)) {
+      items.push({
+        id: 'rotate',
+        label: ACTIONS.rotate.label,
+        iconPath: ACTIONS.rotate.iconPath,
+        onClick: handleRotate,
+      });
+    }
+    if (isActionEnabled('crop', capabilities, handlers)) {
+      const id = currentItem.id;
+      items.push({
+        id: 'crop',
+        label: ACTIONS.crop.label,
+        iconPath: ACTIONS.crop.iconPath,
+        onClick: () => setCropOpenFor(id),
+      });
+    }
+    if (capabilities?.present === true) {
+      items.push({
+        id: 'present',
+        label: isPresenting ? 'Stop slideshow' : 'Slideshow',
+        iconPath: ACTIONS.present.iconPath,
+        active: isPresenting,
+        onClick: handleTogglePresent,
+      });
+    }
+    if (isActionEnabled('info', capabilities, handlers)) {
+      items.push({
+        id: 'info',
+        label: ACTIONS.info.label,
+        iconPath: ACTIONS.info.iconPath,
+        active: infoOpenFor === currentItem.id,
+        onClick: handleToggleInfo,
+      });
+    }
+    if (isActionEnabled('delete', capabilities, handlers)) {
+      items.push({
+        id: 'delete',
+        label: ACTIONS.delete.label,
+        iconPath: ACTIONS.delete.iconPath,
+        onClick: handleDelete,
+      });
+    }
+    return items;
+  }, [
+    currentItem,
+    getDisplayState,
+    capabilities,
+    handlers,
+    handleToggleFavorite,
+    handleRotate,
+    isPresenting,
+    handleTogglePresent,
+    infoOpenFor,
+    handleToggleInfo,
+    handleDelete,
+  ]);
+
   useKeyboard({
     onNext: goNext,
     onPrev: goPrev,
@@ -217,33 +311,53 @@ export function WpView(props: WpViewProps) {
         doubleTapZoom={settings.doubleTapZoom}
         onSwipeNext={goNext}
         onSwipePrev={goPrev}
+        onSwipeDown={onClose}
+        onTap={handleStageTap}
+        onContextMenu={handleStageContextMenu}
         swipeDisabled={!!cropOpenFor}
       />
 
-      <Toolbar
-        showRating={isActionEnabled('rate', capabilities, handlers)}
-        ratingValue={displayState.rating ?? 0}
-        onRate={handleRate}
-        showFavorite={isActionEnabled('favorite', capabilities, handlers)}
-        isFavorite={displayState.favorite ?? false}
-        onToggleFavorite={handleToggleFavorite}
-        showTags={isActionEnabled('tag', capabilities, handlers)}
-        tagIds={displayState.tags ?? []}
-        onRemoveTag={handleRemoveTag}
-        showRotate={isActionEnabled('rotate', capabilities, handlers)}
-        onRotate={handleRotate}
-        showCrop={isActionEnabled('crop', capabilities, handlers)}
-        onCrop={() => setCropOpenFor(currentItem.id)}
-        showDelete={isActionEnabled('delete', capabilities, handlers)}
-        onDelete={handleDelete}
-        showInfo={isActionEnabled('info', capabilities, handlers)}
-        infoActive={infoOpenFor === currentItem.id}
-        onToggleInfo={handleToggleInfo}
-        showPresent={capabilities?.present === true}
-        isPresenting={isPresenting}
-        onTogglePresent={handleTogglePresent}
-        onOpenSettings={() => setSettingsOpen(!settingsOpen)}
-      />
+      {onClose && chromeVisible && (
+        <div className="wpview-close-button">
+          <IconButton label="Close" iconPath={ICON.close} onClick={onClose} />
+        </div>
+      )}
+
+      {contextMenuPos && (
+        <ContextMenu
+          x={contextMenuPos.x}
+          y={contextMenuPos.y}
+          items={contextMenuItems}
+          onClose={() => setContextMenuPos(null)}
+        />
+      )}
+
+      {chromeVisible && (
+        <Toolbar
+          showRating={isActionEnabled('rate', capabilities, handlers)}
+          ratingValue={displayState.rating ?? 0}
+          onRate={handleRate}
+          showFavorite={isActionEnabled('favorite', capabilities, handlers)}
+          isFavorite={displayState.favorite ?? false}
+          onToggleFavorite={handleToggleFavorite}
+          showTags={isActionEnabled('tag', capabilities, handlers)}
+          tagIds={displayState.tags ?? []}
+          onRemoveTag={handleRemoveTag}
+          showRotate={isActionEnabled('rotate', capabilities, handlers)}
+          onRotate={handleRotate}
+          showCrop={isActionEnabled('crop', capabilities, handlers)}
+          onCrop={() => setCropOpenFor(currentItem.id)}
+          showDelete={isActionEnabled('delete', capabilities, handlers)}
+          onDelete={handleDelete}
+          showInfo={isActionEnabled('info', capabilities, handlers)}
+          infoActive={infoOpenFor === currentItem.id}
+          onToggleInfo={handleToggleInfo}
+          showPresent={capabilities?.present === true}
+          isPresenting={isPresenting}
+          onTogglePresent={handleTogglePresent}
+          onOpenSettings={() => setSettingsOpen(!settingsOpen)}
+        />
+      )}
 
       {infoOpenFor === currentItem.id && <InfoPanel meta={currentItem.meta} />}
 

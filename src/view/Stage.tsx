@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ViewerItem } from '../contract/types';
 import { useSwipe } from '../gestures/useSwipe';
 import { usePinchZoom } from '../gestures/usePinchZoom';
@@ -12,6 +13,10 @@ interface StageProps {
   doubleTapZoom: number;
   onSwipeNext?: (() => void) | undefined;
   onSwipePrev?: (() => void) | undefined;
+  onSwipeDown?: (() => void) | undefined;
+  /** Klik/ťuknutí na fotku bez tažení — typicky toggle viditelnosti ovládání. */
+  onTap?: (() => void) | undefined;
+  onContextMenu?: ((x: number, y: number) => void) | undefined;
   swipeDisabled?: boolean;
 }
 
@@ -23,12 +28,17 @@ export function Stage({
   doubleTapZoom,
   onSwipeNext,
   onSwipePrev,
+  onSwipeDown,
+  onTap,
+  onContextMenu,
   swipeDisabled = false,
 }: StageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { dragOffsetX, isDragging } = useSwipe(containerRef, {
+  const { dragOffsetX, dragOffsetY, isDragging } = useSwipe(containerRef, {
     onSwipeNext,
     onSwipePrev,
+    onSwipeDown,
+    onTap,
     disabled: swipeDisabled,
   });
   const { scale, isPinching, resetZoom, setZoom } = usePinchZoom(containerRef, {});
@@ -41,14 +51,35 @@ export function Stage({
     setZoom(scale > 1 ? 1 : doubleTapZoom);
   }, [scale, doubleTapZoom, setZoom]);
 
+  const handleContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>) => {
+      if (!onContextMenu) return;
+      e.preventDefault();
+      onContextMenu(e.clientX, e.clientY);
+    },
+    [onContextMenu],
+  );
+
+  const transform =
+    dragOffsetX !== 0
+      ? `translateX(${dragOffsetX}px)`
+      : dragOffsetY !== 0
+        ? `translateY(${dragOffsetY}px)`
+        : undefined;
+  // Táhnutí dolů (swipe-to-close) bledne úměrně vzdálenosti — vizuální signál,
+  // že puštění zavře. Nikdy pod 0.4, ať fotka úplně nezmizí před release.
+  const opacity = dragOffsetY > 0 ? Math.max(0.4, 1 - dragOffsetY / 400) : 1;
+
   return (
     <div
       ref={containerRef}
       className="wpview-stage"
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       style={{
-        transform: dragOffsetX !== 0 ? `translateX(${dragOffsetX}px)` : undefined,
-        transition: isDragging || isPinching ? 'none' : 'transform 0.2s ease',
+        transform,
+        opacity,
+        transition: isDragging || isPinching ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
       }}
     >
       <ImageLoader

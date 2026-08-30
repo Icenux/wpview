@@ -1,8 +1,21 @@
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WpView } from '../src/WpView';
 import type { ItemState, ViewerItem } from '../src/contract/types';
+
+// Raw dispatchEvent doesn't auto-wrap in act() the way RTL's fireEvent does.
+function firePointer(
+  el: Element,
+  type: string,
+  { pointerId = 1, clientX = 0, clientY = 0 }: { pointerId?: number; clientX?: number; clientY?: number },
+) {
+  act(() => {
+    el.dispatchEvent(
+      new PointerEvent(type, { bubbles: true, cancelable: true, pointerId, clientX, clientY }),
+    );
+  });
+}
 
 const items: ViewerItem[] = [
   { id: 'a', thumbSrc: 'a-thumb', fullSrc: 'https://example.com/a.jpg' },
@@ -88,6 +101,107 @@ describe('WpView windowing', () => {
       />,
     );
     expect(onRequestMore).toHaveBeenCalledWith('next');
+  });
+});
+
+describe('WpView close button', () => {
+  it('renders and calls onClose when onClose is provided', () => {
+    const onClose = vi.fn();
+    render(<WpView {...baseProps({ onClose })} />);
+
+    fireEvent.click(screen.getByLabelText('Close'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('is absent when onClose is not provided', () => {
+    render(<WpView {...baseProps()} />);
+    expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
+  });
+});
+
+describe('WpView chrome toggle (tap to hide/show controls)', () => {
+  it('hides the close button and toolbar after a tap on the stage, and a second tap restores them', () => {
+    const onClose = vi.fn();
+    render(<WpView {...baseProps({ onClose, capabilities: { rate: true }, onRate: vi.fn() })} />);
+
+    expect(screen.getByLabelText('Close')).toBeInTheDocument();
+    expect(screen.getByLabelText('4 stars')).toBeInTheDocument();
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 150, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 150, clientY: 150 });
+
+    expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('4 stars')).not.toBeInTheDocument();
+
+    firePointer(stage, 'pointerdown', { clientX: 150, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 150, clientY: 150 });
+
+    expect(screen.getByLabelText('Close')).toBeInTheDocument();
+    expect(screen.getByLabelText('4 stars')).toBeInTheDocument();
+  });
+
+  it('a real drag on the stage (swipe) does not toggle the chrome', () => {
+    const onClose = vi.fn();
+    const onIndexChange = vi.fn();
+    render(<WpView {...baseProps({ onClose, onIndexChange })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 300, clientY: 150 });
+    firePointer(stage, 'pointermove', { clientX: 100, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 100, clientY: 150 });
+
+    expect(screen.getByLabelText('Close')).toBeInTheDocument();
+  });
+});
+
+describe('WpView swipe-to-close', () => {
+  it('a downward drag past the threshold calls onClose', () => {
+    const onClose = vi.fn();
+    render(<WpView {...baseProps({ onClose })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 150, clientY: 50 });
+    firePointer(stage, 'pointermove', { clientX: 150, clientY: 250 });
+    firePointer(stage, 'pointerup', { clientX: 150, clientY: 250 });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('WpView context menu', () => {
+  it('right-clicking the stage opens a menu with only the enabled actions', () => {
+    render(
+      <WpView
+        {...baseProps({
+          capabilities: { favorite: true, delete: true },
+          onFavorite: vi.fn(),
+          onDelete: vi.fn(),
+        })}
+      />,
+    );
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    fireEvent.contextMenu(stage, { clientX: 100, clientY: 100 });
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Favorite' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
+    // rotate/crop/info/present weren't enabled — must not show up.
+    expect(screen.queryByRole('menuitem', { name: 'Rotate' })).not.toBeInTheDocument();
+  });
+
+  it('clicking a menu item runs the action and closes the menu', () => {
+    const onFavorite = vi.fn();
+    render(<WpView {...baseProps({ capabilities: { favorite: true }, onFavorite })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    fireEvent.contextMenu(stage, { clientX: 100, clientY: 100 });
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Favorite' }));
+
+    expect(onFavorite).toHaveBeenCalledWith('a', true);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });
 
