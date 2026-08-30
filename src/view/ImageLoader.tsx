@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 
 interface ImageLoaderProps {
   src: string;
@@ -12,10 +12,19 @@ interface ImageLoaderProps {
 
 /** Zobrazí `placeholderSrc` (thumbnail) dokud se nenačte `src` (fullSrc nebo edit blob). */
 export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoaderProps) {
+  const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    setLoaded(false);
+  // `usePreload` warmuje sousední fullSrc dopředu (swipe i slideshow), takže
+  // prohlížeč obrázek často má už v okamžiku mountu. `.complete` je pro
+  // cachovaný <img> pravda SYNCHRONNĚ hned po nastavení src — proto
+  // useLayoutEffect (běží před paintem), ne useEffect. Bez týhle kontroly by
+  // se placeholder/blur na každé přelistování probliskl i pro fotku, která
+  // je dávno v cache, protože starý kód `loaded` vždycky nejdřív resetoval
+  // na false a čekal na onLoad, i když už dávno odpálil.
+  useLayoutEffect(() => {
+    const img = imgRef.current;
+    setLoaded(!!img && img.complete && img.naturalWidth > 0);
   }, [src]);
 
   return (
@@ -29,6 +38,7 @@ export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoader
         />
       )}
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         onLoad={() => setLoaded(true)}
