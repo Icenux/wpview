@@ -170,15 +170,28 @@ export function WpView(props: WpViewProps) {
     [currentItem, capabilities, handlers],
   );
 
-  const handleRotate = useCallback(async () => {
-    if (!currentItem) return;
-    try {
-      const patch = await rotateImage(currentItem.fullSrc, 90);
-      applyEdit(patch);
-    } catch (err) {
-      console.error('wpview: rotate failed', err);
-    }
-  }, [currentItem, applyEdit]);
+  // 90 = doprava (po směru hodinových ručiček), 270 = doleva — matematicky
+  // rotace o -90°, ale EditPatch.deg drží jen kladné násobky 90 (viz CONTRACT.md).
+  const handleRotate = useCallback(
+    async (deg: 90 | 270) => {
+      if (!currentItem) return;
+      try {
+        const patch = await rotateImage(currentItem.fullSrc, deg);
+        applyEdit(patch);
+      } catch (err) {
+        console.error('wpview: rotate failed', err);
+      }
+    },
+    [currentItem, applyEdit],
+  );
+
+  const handleRotateLeft = useCallback(() => {
+    void handleRotate(270);
+  }, [handleRotate]);
+
+  const handleRotateRight = useCallback(() => {
+    void handleRotate(90);
+  }, [handleRotate]);
 
   const handleCropConfirm = useCallback(
     (patch: EditPatch) => {
@@ -257,7 +270,8 @@ export function WpView(props: WpViewProps) {
           tagIds={displayState.tags ?? []}
           onRemoveTag={handleRemoveTag}
           showRotate={isActionEnabled('rotate', capabilities, handlers)}
-          onRotate={handleRotate}
+          onRotateLeft={handleRotateLeft}
+          onRotateRight={handleRotateRight}
           showCrop={isActionEnabled('crop', capabilities, handlers)}
           onCrop={() => setCropOpenFor(currentItem.id)}
           showDelete={isActionEnabled('delete', capabilities, handlers)}

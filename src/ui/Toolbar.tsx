@@ -1,4 +1,4 @@
-import { ACTIONS } from '../actions/registry';
+import { ACTIONS, ICON } from '../actions/registry';
 import { IconButton } from './IconButton';
 import { RatingStars } from './RatingStars';
 import { TagChips } from './TagChips';
@@ -17,7 +17,8 @@ interface ToolbarProps {
   onRemoveTag?: ((tagId: string) => void) | undefined;
 
   showRotate: boolean;
-  onRotate?: (() => void) | undefined;
+  onRotateLeft?: (() => void) | undefined;
+  onRotateRight?: (() => void) | undefined;
 
   showCrop: boolean;
   onCrop?: (() => void) | undefined;
@@ -50,7 +51,8 @@ export function Toolbar({
   tagIds,
   onRemoveTag,
   showRotate,
-  onRotate,
+  onRotateLeft,
+  onRotateRight,
   showCrop,
   onCrop,
   showDelete,
@@ -78,11 +80,10 @@ export function Toolbar({
       </div>
       <div className="wpview-toolbar__group">
         {showRotate && (
-          <IconButton
-            label={ACTIONS.rotate.label}
-            iconPath={ACTIONS.rotate.iconPath}
-            onClick={() => onRotate?.()}
-          />
+          <IconButton label="Rotate left" iconPath={ICON.rotateLeft} onClick={() => onRotateLeft?.()} />
+        )}
+        {showRotate && (
+          <IconButton label="Rotate right" iconPath={ICON.rotateRight} onClick={() => onRotateRight?.()} />
         )}
         {showCrop && (
           <IconButton label={ACTIONS.crop.label} iconPath={ACTIONS.crop.iconPath} onClick={() => onCrop?.()} />

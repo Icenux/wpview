@@ -211,7 +211,7 @@ describe('WpView edit flow', () => {
     vi.unstubAllGlobals();
   });
 
-  it('rotate emits an EditPatch through onEdit', async () => {
+  it('Rotate right emits an EditPatch with deg 90', async () => {
     const bitmap = { width: 800, height: 600, close: vi.fn() };
     vi.stubGlobal(
       'fetch',
@@ -223,11 +223,31 @@ describe('WpView edit flow', () => {
     const onEdit = vi.fn();
     render(<WpView {...baseProps({ capabilities: { rotate: true }, onEdit })} />);
 
-    fireEvent.click(screen.getByLabelText('Rotate'));
+    fireEvent.click(screen.getByLabelText('Rotate right'));
 
     await vi.waitFor(() => expect(onEdit).toHaveBeenCalledTimes(1));
-    const [id, patch] = onEdit.mock.calls[0] as [string, { type: string }];
+    const [id, patch] = onEdit.mock.calls[0] as [string, { type: string; deg: number }];
     expect(id).toBe('a');
-    expect(patch.type).toBe('rotate');
+    expect(patch).toMatchObject({ type: 'rotate', deg: 90 });
+  });
+
+  it('Rotate left emits an EditPatch with deg 270', async () => {
+    const bitmap = { width: 800, height: 600, close: vi.fn() };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ blob: async () => new Blob(['src'], { type: 'image/jpeg' }) })),
+    );
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => bitmap));
+    vi.stubGlobal('OffscreenCanvas', MockOffscreenCanvas as unknown as typeof OffscreenCanvas);
+
+    const onEdit = vi.fn();
+    render(<WpView {...baseProps({ capabilities: { rotate: true }, onEdit })} />);
+
+    fireEvent.click(screen.getByLabelText('Rotate left'));
+
+    await vi.waitFor(() => expect(onEdit).toHaveBeenCalledTimes(1));
+    const [id, patch] = onEdit.mock.calls[0] as [string, { type: string; deg: number }];
+    expect(id).toBe('a');
+    expect(patch).toMatchObject({ type: 'rotate', deg: 270 });
   });
 });

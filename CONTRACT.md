@@ -90,6 +90,11 @@ výsledek je hotový `Blob` v `onEdit(id, patch)`. wpview ukazuje editovaný blo
 opticky, dokud consumer nedodá nový `fullSrc` pro to `id`. Rotace přes canvas
 re-encode je **ztrátová** — dokumentovaný kompromis, ne bug.
 
+**Rotate má dvě tlačítka (doleva/doprava), jednu capability.** `deg: 90` =
+doprava (po směru hodinových ručiček), `deg: 270` = doleva (matematicky -90°,
+ale `EditPatch.deg` drží jen kladné násobky 90). Obě tlačítka gatuje stejná
+`capabilities.rotate` — je to jedna schopnost „tuhle fotku smí otočit", ne dvě.
+
 **Windowing.** `items` je okno kolem `index`, ne celá galerie. Na kraji okna
 wpview volá `onRequestMore(dir)`; `hasMore` říká, jestli má smysl žádat dál.
 
