@@ -42,6 +42,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Belt-and-suspenders with .wpview's touch-action: none (spec says it
+     should already intersect down to here) — set directly on the element
+     that actually owns the pointerdown/pointermove listeners, so a real
+     touchscreen can't hand a swipe starting here to the browser's own
+     panning/edge-navigation gesture before useSwipe sees it. */
+  touch-action: none;
 }
 
 .wpview-image-loader {
@@ -57,6 +63,12 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
+  /* An <img> is natively draggable and long-press-selectable; either can
+     hijack a touch gesture mid-swipe before useSwipe's pointer listeners
+     see the move, on top of the `draggable={false}` already set in JSX. */
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
 }
 
 .wpview-image-loader__full {
@@ -79,12 +91,22 @@
   padding: 10px 16px;
   background: var(--wpview-surface);
   border-top: 1px solid var(--wpview-border);
+  /* On a narrow phone, rate+favorite+tags+rotate×2+present+info+delete+
+     settings doesn't fit in one row — with no wrap and .wpview's
+     overflow:hidden, whatever didn't fit (settings, being last) was
+     silently clipped off-screen and unreachable. Horizontal scroll keeps
+     every action reachable regardless of how many a consumer enables,
+     without wpview having to guess which one is "least important" to hide. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .wpview-toolbar__group {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .wpview-icon-button {

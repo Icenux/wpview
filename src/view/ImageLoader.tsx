@@ -34,6 +34,7 @@ export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoader
           src={placeholderSrc}
           alt=""
           aria-hidden="true"
+          draggable={false}
           className="wpview-image-loader__placeholder"
         />
       )}
@@ -41,6 +42,7 @@ export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoader
         ref={imgRef}
         src={src}
         alt={alt}
+        draggable={false}
         onLoad={() => setLoaded(true)}
         className="wpview-image-loader__full"
         style={{
