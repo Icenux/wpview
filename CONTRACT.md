@@ -29,9 +29,10 @@ interface WpViewProps {
   onTagToggle?(id: string, tagId: string): void;
   onEdit?(id: string, patch: EditPatch): void;
   onDelete?(id: string): void;
-  onInfoOpen?(id: string): void;
+  onInfoOpen?(id: string): void;         // jednorázový klik, žádný toggle — viz sémantika
+  onContextMenu?(id: string, x: number, y: number): void;  // pravý klik / long-press — žádné vlastní menu
   onRequestMore?(dir: 'prev' | 'next'): void;
-  onClose?(): void;
+  onClose?(): void;                       // křížek, swipe dolů, Escape — všechny tři volají tohle
 }
 ```
 
@@ -44,7 +45,7 @@ interface ViewerItem {
   fullSrc: string;
   width?: number;
   height?: number;
-  meta?: Record<string, unknown>;   // EXIF / datum / místo — jen k zobrazení v InfoPanel
+  meta?: Record<string, unknown>;   // EXIF / datum / místo — wpview to sám nezobrazuje (viz onInfoOpen)
 }
 
 interface ItemState {
@@ -108,3 +109,24 @@ nic. Bez čehokoli funguje wpview out-of-the-box.
 
 **Capability gate.** Akce bez odpovídající capability se **nezobrazí ani
 neemituje**. Chybějící handler má stejný efekt — akce je skrytá.
+
+**Info a context menu jsou čistě emit-only.** Na rozdíl od rating/tag/rotate
+(ty JSOU interaktivní ovládání a musí žít uvnitř wpview) si Info a context menu
+téměř každý consumer už má svoje vlastní — bohatší detail panel, bohatší menu s
+akcemi mimo dosah wpview (album, download, přesun...). wpview proto pro ně
+**nekreslí žádnou vlastní UI**: `onInfoOpen(id)` se zavolá při každém kliku na
+Info (žádný toggle, žádný lokální stav — consumer si otevírání/zavírání svého
+panelu řídí sám). `onContextMenu(id, x, y)` se zavolá při pravém kliku na fotku
+s pozicí kliku; consumer na `(x, y)` vykreslí svoje vlastní menu (klidně to
+samé, které používá jinde v appce pro tu stejnou fotku). Bez handleru se u
+Info nic neděje (tlačítko samo o sobě zmizí přes capability gate) a u
+context menu **neprojde `preventDefault()`** — prohlížeč ukáže svoje nativní
+menu, protože wpview capability nemá čím to schovat.
+
+**Zavírání.** Tři nezávislé cesty na `onClose()`: křížek vpravo nahoře
+(zobrazí se jen když je `onClose` dodaný), swipe/tažení dolů přes fotkou, a
+Escape. Všechny tři jsou navzájem nezávislé a rovnocenné.
+
+**Chrome toggle.** Ťuknutí/klik na fotku (bez tažení) schová/vrátí křížek a
+toolbar — stejný vzorec jako mobilní galerie. Netýká se to klávesových
+zkratek ani swipe-to-close, ty fungují bez ohledu na viditelnost chrome.

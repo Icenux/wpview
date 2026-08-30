@@ -26,8 +26,7 @@ interface ToolbarProps {
   onDelete?: (() => void) | undefined;
 
   showInfo: boolean;
-  infoActive: boolean;
-  onToggleInfo?: (() => void) | undefined;
+  onInfoOpen?: (() => void) | undefined;
 
   showPresent: boolean;
   isPresenting: boolean;
@@ -57,8 +56,7 @@ export function Toolbar({
   showDelete,
   onDelete,
   showInfo,
-  infoActive,
-  onToggleInfo,
+  onInfoOpen,
   showPresent,
   isPresenting,
   onTogglePresent,
@@ -101,8 +99,7 @@ export function Toolbar({
           <IconButton
             label={ACTIONS.info.label}
             iconPath={ACTIONS.info.iconPath}
-            active={infoActive}
-            onClick={() => onToggleInfo?.()}
+            onClick={() => onInfoOpen?.()}
           />
         )}
         {showDelete && (

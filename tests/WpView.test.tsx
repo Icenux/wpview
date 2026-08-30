@@ -170,38 +170,39 @@ describe('WpView swipe-to-close', () => {
   });
 });
 
-describe('WpView context menu', () => {
-  it('right-clicking the stage opens a menu with only the enabled actions', () => {
-    render(
-      <WpView
-        {...baseProps({
-          capabilities: { favorite: true, delete: true },
-          onFavorite: vi.fn(),
-          onDelete: vi.fn(),
-        })}
-      />,
-    );
+describe('WpView context menu (emit-only, no local UI)', () => {
+  it('right-clicking the stage calls onContextMenu with the item id and click position, and renders no menu itself', () => {
+    const onContextMenu = vi.fn();
+    render(<WpView {...baseProps({ onContextMenu })} />);
 
     const stage = document.querySelector('.wpview-stage') as HTMLElement;
-    fireEvent.contextMenu(stage, { clientX: 100, clientY: 100 });
+    fireEvent.contextMenu(stage, { clientX: 123, clientY: 45 });
 
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Favorite' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument();
-    // rotate/crop/info/present weren't enabled — must not show up.
-    expect(screen.queryByRole('menuitem', { name: 'Rotate' })).not.toBeInTheDocument();
+    expect(onContextMenu).toHaveBeenCalledWith('a', 123, 45);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
-  it('clicking a menu item runs the action and closes the menu', () => {
-    const onFavorite = vi.fn();
-    render(<WpView {...baseProps({ capabilities: { favorite: true }, onFavorite })} />);
-
+  it('does not suppress the native context menu when onContextMenu is not provided', () => {
+    render(<WpView {...baseProps()} />);
     const stage = document.querySelector('.wpview-stage') as HTMLElement;
-    fireEvent.contextMenu(stage, { clientX: 100, clientY: 100 });
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Favorite' }));
+    const event = fireEvent.contextMenu(stage, { clientX: 10, clientY: 10 });
+    // fireEvent returns false when preventDefault() was called — undefined handler must not call it.
+    expect(event).toBe(true);
+  });
+});
 
-    expect(onFavorite).toHaveBeenCalledWith('a', true);
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+describe('WpView info (emit-only, no local panel)', () => {
+  it('clicking Info fires onInfoOpen every time, with no toggle/active state and no rendered panel', () => {
+    const onInfoOpen = vi.fn();
+    render(<WpView {...baseProps({ capabilities: { info: true }, onInfoOpen })} />);
+
+    const infoButton = screen.getByLabelText('Info');
+    fireEvent.click(infoButton);
+    fireEvent.click(infoButton);
+
+    expect(onInfoOpen).toHaveBeenNthCalledWith(1, 'a');
+    expect(onInfoOpen).toHaveBeenNthCalledWith(2, 'a');
+    expect(infoButton.getAttribute('aria-pressed')).toBe('false');
   });
 });
 

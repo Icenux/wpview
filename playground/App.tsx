@@ -109,6 +109,15 @@ export function App() {
     [pushLog],
   );
 
+  const handleContextMenu = useCallback(
+    (id: string, x: number, y: number) => {
+      // Reálný consumer by tu otevřel svoje vlastní menu na (x, y) — wpview
+      // žádné nekreslí, jen emituje záměr (viz CONTRACT.md).
+      pushLog(`onContextMenu(${id}, ${x}, ${y})`);
+    },
+    [pushLog],
+  );
+
   const handleClose = useCallback(() => {
     pushLog('onClose()');
     setLightboxIndex(null);
@@ -147,6 +156,7 @@ export function App() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onInfoOpen={handleInfoOpen}
+            onContextMenu={handleContextMenu}
             onRequestMore={handleRequestMore}
             onClose={handleClose}
           />

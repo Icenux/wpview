@@ -7,7 +7,7 @@ export interface ViewerItem {
   fullSrc: string;
   width?: number;
   height?: number;
-  /** EXIF / datum / místo — jen k zobrazení v InfoPanel. */
+  /** EXIF / datum / místo — wpview to samo nezobrazuje, jen si to drží pro consumera. */
   meta?: Record<string, unknown>;
 }
 
@@ -67,7 +67,10 @@ export interface WpViewProps {
   onTagToggle?(id: string, tagId: string): void;
   onEdit?(id: string, patch: EditPatch): void;
   onDelete?(id: string): void;
+  /** Fotka info — jednorázový klik, žádný toggle. wpview nic sám nezobrazuje. */
   onInfoOpen?(id: string): void;
+  /** Pravý klik / long-press na fotce — wpview nekreslí žádné menu, jen záměr. */
+  onContextMenu?(id: string, x: number, y: number): void;
   onRequestMore?(dir: 'prev' | 'next'): void;
   onClose?(): void;
 }

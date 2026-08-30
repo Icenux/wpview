@@ -16,7 +16,12 @@ a napojí přes props/eventy. Kontrakt viz `CONTRACT.md`.
 
 ## Vodicí princip
 **wpview emituje záměr, consumer vlastní politiku.** Tlačítko rotace nevyrotuje
-na serveru — vystřelí `onEdit`. Delete nemaže — vystřelí `onDelete`.
+na serveru — vystřelí `onEdit`. Delete nemaže — vystřelí `onDelete`. Info
+nezobrazuje panel — vystřelí `onInfoOpen`. Pravý klik nekreslí menu — vystřelí
+`onContextMenu(id, x, y)`. Poslední dva jsou schválně čistě emit-only (žádný
+lokální stav, žádná UI) — consumer skoro vždycky má svůj vlastní, bohatší
+detail panel a menu; duplicitní zjednodušená verze uvnitř wpview by se s ním
+jen prala o pozornost.
 
 ## Architektura (tok jedním směrem)
 ```
@@ -45,6 +50,9 @@ contract/ → state,data (hooks) → view,gestures,present,edit → ui/ → WpVi
   převzato consumerem, wpview si to sám neřeší.
 - **Kontrakt:** `src/contract/types.ts` je source of truth, `CONTRACT.md` jeho
   zrcadlo. Měň oba spolu.
+- **Zavírání má tři nezávislé cesty na `onClose`:** křížek (jen když je
+  `onClose` dodaný), swipe/tažení dolů, Escape. **Ťuknutí na fotku** (bez
+  tažení) schová/vrátí křížek + toolbar — nemá nic společného s zavíráním.
 
 ## Co se NEAPLIKUJE
 Backendová pravidla ze skillu `web-project-structure` (FastAPI, domain vrstva,
@@ -65,7 +73,7 @@ src/
   present/            Slideshow.tsx, useFullscreen.ts
   edit/               CropCanvas.tsx, rotate.ts, encode.ts
   actions/            registry.ts, types.ts
-  ui/                 Toolbar, RatingStars, TagChips, InfoPanel, IconButton (dumb)
+  ui/                 Toolbar, RatingStars, TagChips, SettingsPanel, IconButton (dumb)
   styles/             wpview.css (CSS proměnné pro téma)
 playground/           dev harness — mock data, žádný backend
 tests/
