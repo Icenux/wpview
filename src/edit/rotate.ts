@@ -7,9 +7,20 @@ const JPEG_QUALITY = 0.92;
  * Re-encode přes canvas je ztrátový (viz CLAUDE.md „dokumentovaný
  * kompromis, neřeš jako bug"). `deg` je vždy násobek 90°, canvas ho aplikuje
  * jako rotaci kolem středu s prohozenými rozměry pro 90/270.
+ *
+ * `src` (odkud se pixely berou) a `mimeHintSrc` (odkud se hádá výstupní
+ * typ) jsou schválně oddělené parametry: při druhé rotaci v řadě, než
+ * consumer potvrdí tu první, `src` bývá `blob:` URL z předchozího otočení
+ * (viz WpView.tsx handleRotate) — bez příponu by inferMimeType tiše spadla
+ * na PNG fallback i pro JPEG originál. `mimeHintSrc` proto vždycky drží tu
+ * skutečnou URL originálu s příponou.
  */
-export async function rotateImage(fullSrc: string, deg: 90 | 180 | 270): Promise<EditPatch> {
-  const bitmap = await loadBitmap(fullSrc);
+export async function rotateImage(
+  src: string,
+  deg: 90 | 180 | 270,
+  mimeHintSrc: string = src,
+): Promise<EditPatch> {
+  const bitmap = await loadBitmap(src);
   try {
     const swapDims = deg === 90 || deg === 270;
     const width = swapDims ? bitmap.height : bitmap.width;
@@ -23,7 +34,7 @@ export async function rotateImage(fullSrc: string, deg: 90 | 180 | 270): Promise
     ctx.rotate((deg * Math.PI) / 180);
     ctx.drawImage(bitmap, -bitmap.width / 2, -bitmap.height / 2);
 
-    const blob = await canvasToBlob(canvas, { mimeType: inferMimeType(fullSrc), quality: JPEG_QUALITY });
+    const blob = await canvasToBlob(canvas, { mimeType: inferMimeType(mimeHintSrc), quality: JPEG_QUALITY });
     return { type: 'rotate', deg, blob };
   } finally {
     bitmap.close();

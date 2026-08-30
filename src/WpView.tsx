@@ -158,6 +158,10 @@ export function WpView(props: WpViewProps) {
   const applyEdit = useCallback(
     (patch: EditPatch) => {
       if (!currentItem) return;
+      // Předchozí blob téhož id přepisujeme, ne skládáme — zahodit ho teď,
+      // jinak visí v paměti až do opuštění okna/unmountu.
+      const previous = state.edit[currentItem.id];
+      if (previous) URL.revokeObjectURL(previous.blobUrl);
       dispatch({
         type: 'edit/set',
         id: currentItem.id,
@@ -167,7 +171,7 @@ export function WpView(props: WpViewProps) {
       });
       emitEdit(capabilities, handlers, currentItem.id, patch);
     },
-    [currentItem, capabilities, handlers],
+    [currentItem, capabilities, handlers, state.edit],
   );
 
   // 90 = doprava (po směru hodinových ručiček), 270 = doleva — matematicky
@@ -176,13 +180,20 @@ export function WpView(props: WpViewProps) {
     async (deg: 90 | 270) => {
       if (!currentItem) return;
       try {
-        const patch = await rotateImage(currentItem.fullSrc, deg);
+        // Rotovat z toho, co je AKTUÁLNĚ vidět (předchozí ještě nepotvrzený
+        // edit blob), ne vždycky ze stálého fullSrc — consumer bývá se
+        // server-side potvrzením pomalejší než uživatelův druhý klik (viz
+        // gallery: 2-30s polling), takže fullSrc je v tu chvíli furt starý.
+        // Rotace z něj by při dalším kliku přepočítala z originálu a vizuálně
+        // by to "skočilo" o 180° místo plynulé kumulace.
+        const rotateSource = state.edit[currentItem.id]?.blobUrl ?? currentItem.fullSrc;
+        const patch = await rotateImage(rotateSource, deg, currentItem.fullSrc);
         applyEdit(patch);
       } catch (err) {
         console.error('wpview: rotate failed', err);
       }
     },
-    [currentItem, applyEdit],
+    [currentItem, applyEdit, state.edit],
   );
 
   const handleRotateLeft = useCallback(() => {

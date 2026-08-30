@@ -250,4 +250,38 @@ describe('WpView edit flow', () => {
     expect(id).toBe('a');
     expect(patch).toMatchObject({ type: 'rotate', deg: 270 });
   });
+
+  it('rotating again before the consumer confirms builds on the currently-displayed image, not the stale original', async () => {
+    // Bug report: Rotate right then Rotate left visually jumped through 180°
+    // instead of cancelling back out, because the second click re-rotated
+    // the ORIGINAL fullSrc (still stale — the consumer's server-side rotate
+    // hasn't confirmed and refreshed it yet) instead of the first rotation's
+    // already-displayed optical result.
+    const bitmap = { width: 800, height: 600, close: vi.fn() };
+    const fetchMock = vi.fn(async (_url: string) => ({
+      blob: async () => new Blob(['src'], { type: 'image/jpeg' }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => bitmap));
+    vi.stubGlobal('OffscreenCanvas', MockOffscreenCanvas as unknown as typeof OffscreenCanvas);
+
+    const onEdit = vi.fn();
+    // onEdit deliberately does NOT feed a new fullSrc back — matches the real
+    // gallery adapter, whose server-side rotate + thumbnail regen takes
+    // seconds, during which items[].fullSrc stays exactly as it was.
+    render(<WpView {...baseProps({ capabilities: { rotate: true }, onEdit })} />);
+
+    fireEvent.click(screen.getByLabelText('Rotate right'));
+    // Wait for the whole rotate -> applyEdit -> onEdit chain, not just the
+    // fetch call — state.edit (and the closures reading it) only reflect
+    // the new blobUrl once that dispatch has landed and React re-rendered.
+    await vi.waitFor(() => expect(onEdit).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://example.com/a.jpg');
+
+    fireEvent.click(screen.getByLabelText('Rotate left'));
+    await vi.waitFor(() => expect(onEdit).toHaveBeenCalledTimes(2));
+
+    expect(fetchMock.mock.calls[1]?.[0]).not.toBe('https://example.com/a.jpg');
+    expect(fetchMock.mock.calls[1]?.[0]).toMatch(/^blob:/);
+  });
 });
