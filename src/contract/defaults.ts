@@ -2,7 +2,6 @@ import type { Settings } from './types';
 
 export const DEFAULT_SETTINGS: Settings = {
   slideshowMs: 4000,
-  zoomMode: 'fit',
   doubleTapZoom: 2,
   theme: 'system',
 };

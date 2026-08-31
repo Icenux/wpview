@@ -18,16 +18,6 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
         ×
       </button>
       <label className="wpview-settings-panel__row">
-        <span>Zoom mode</span>
-        <select
-          value={settings.zoomMode}
-          onChange={(e) => onChange({ ...settings, zoomMode: e.target.value as Settings['zoomMode'] })}
-        >
-          <option value="fit">Fit</option>
-          <option value="actual">Actual size</option>
-        </select>
-      </label>
-      <label className="wpview-settings-panel__row">
         <span>Double-tap zoom</span>
         <input
           type="number"
@@ -39,13 +29,16 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
         />
       </label>
       <label className="wpview-settings-panel__row">
-        <span>Slideshow interval (ms)</span>
+        <span>Slideshow interval (seconds)</span>
         <input
           type="number"
-          min={500}
-          step={500}
-          value={settings.slideshowMs}
-          onChange={(e) => onChange({ ...settings, slideshowMs: Number(e.target.value) })}
+          min={1}
+          step={1}
+          // Settings.slideshowMs stays milliseconds internally (Slideshow.tsx
+          // feeds it straight into setInterval) — nobody types "4000" into a
+          // form field on purpose, so the UI works in seconds and converts.
+          value={settings.slideshowMs / 1000}
+          onChange={(e) => onChange({ ...settings, slideshowMs: Math.max(1, Number(e.target.value)) * 1000 })}
         />
       </label>
       <label className="wpview-settings-panel__row">

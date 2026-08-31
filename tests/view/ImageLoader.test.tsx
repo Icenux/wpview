@@ -33,7 +33,7 @@ describe('ImageLoader', () => {
     // flashed the blurred placeholder for at least one render, racing
     // against the already-fired onLoad.
     stubImageComplete(true);
-    render(<ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" fit="fit" zoom={1} />);
+    render(<ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" zoom={1} />);
 
     expect(document.querySelector('.wpview-image-loader__placeholder')).toBeNull();
     const full = document.querySelector('.wpview-image-loader__full') as HTMLElement;
@@ -42,7 +42,7 @@ describe('ImageLoader', () => {
 
   it('shows the placeholder and fades in on onLoad when the image is not yet cached', () => {
     stubImageComplete(false);
-    render(<ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" fit="fit" zoom={1} />);
+    render(<ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" zoom={1} />);
 
     expect(document.querySelector('.wpview-image-loader__placeholder')).not.toBeNull();
     const full = document.querySelector('.wpview-image-loader__full') as HTMLElement;
@@ -59,13 +59,13 @@ describe('ImageLoader', () => {
   it('re-checks the cache state on every src change instead of only once', () => {
     stubImageComplete(true);
     const { rerender } = render(
-      <ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" fit="fit" zoom={1} />,
+      <ImageLoader src="https://example.com/a.jpg" placeholderSrc="https://example.com/a-thumb.jpg" alt="" zoom={1} />,
     );
     expect(document.querySelector('.wpview-image-loader__placeholder')).toBeNull();
 
     stubImageComplete(false);
     rerender(
-      <ImageLoader src="https://example.com/b.jpg" placeholderSrc="https://example.com/b-thumb.jpg" alt="" fit="fit" zoom={1} />,
+      <ImageLoader src="https://example.com/b.jpg" placeholderSrc="https://example.com/b-thumb.jpg" alt="" zoom={1} />,
     );
 
     expect(document.querySelector('.wpview-image-loader__placeholder')).not.toBeNull();

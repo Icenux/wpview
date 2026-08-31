@@ -13,11 +13,11 @@ describe('useSettings', () => {
     expect(result.current.settings).toEqual(DEFAULT_SETTINGS);
 
     act(() => {
-      result.current.setSettings({ ...DEFAULT_SETTINGS, zoomMode: 'actual' });
+      result.current.setSettings({ ...DEFAULT_SETTINGS, doubleTapZoom: 3 });
     });
 
-    expect(result.current.settings.zoomMode).toBe('actual');
-    expect(JSON.parse(localStorage.getItem('wpview:settings') ?? '{}').zoomMode).toBe('actual');
+    expect(result.current.settings.doubleTapZoom).toBe(3);
+    expect(JSON.parse(localStorage.getItem('wpview:settings') ?? '{}').doubleTapZoom).toBe(3);
   });
 
   it('uncontrolled persistence loads from localStorage on mount', () => {
@@ -28,9 +28,9 @@ describe('useSettings', () => {
 
   it('controlled persistence never touches localStorage, calls onSettingsChange instead', () => {
     const onSettingsChange = vi.fn();
-    const { result } = renderHook(() => useSettings({ settings: { zoomMode: 'actual' }, onSettingsChange }));
+    const { result } = renderHook(() => useSettings({ settings: { doubleTapZoom: 3 }, onSettingsChange }));
 
-    expect(result.current.settings.zoomMode).toBe('actual');
+    expect(result.current.settings.doubleTapZoom).toBe(3);
 
     act(() => {
       result.current.setSettings({ ...DEFAULT_SETTINGS, theme: 'dark' });

@@ -18,9 +18,9 @@ function firePointer(
   });
 }
 
-function Harness({ alwaysPannable = false }: { alwaysPannable?: boolean }) {
+function Harness() {
   const ref = useRef<HTMLDivElement>(null);
-  const { scale, translateX, translateY } = usePinchZoom(ref, { min: 1, max: 6, alwaysPannable });
+  const { scale, translateX, translateY } = usePinchZoom(ref, { min: 1, max: 6 });
   return (
     <div ref={ref} data-testid="surface">
       scale:{scale.toFixed(2)} pan:{translateX},{translateY}
@@ -42,7 +42,7 @@ describe('usePinchZoom / pinch', () => {
     expect(surface.textContent).toBe('scale:5.00 pan:0,0');
   });
 
-  it('a single pointer does not zoom or pan while at scale 1 and not alwaysPannable', () => {
+  it('a single pointer does not zoom or pan while at scale 1', () => {
     render(<Harness />);
     const surface = screen.getByTestId('surface');
 
@@ -91,26 +91,24 @@ describe('usePinchZoom / single-finger pan (bug: dragging a zoomed photo used to
     expect(surface.textContent).toBe('scale:5.00 pan:30,20');
   });
 
-  it('pans from scale 1 when alwaysPannable (zoomMode: actual overflows even unzoomed)', () => {
-    render(<Harness alwaysPannable />);
-    const surface = screen.getByTestId('surface');
-
-    firePointer(surface, 'pointerdown', { pointerId: 1, clientX: 50, clientY: 50 });
-    firePointer(surface, 'pointermove', { pointerId: 1, clientX: 10, clientY: 65 });
-
-    expect(surface.textContent).toBe('scale:1.00 pan:-40,15');
-  });
-
   it('a second finger joining mid-pan hands off to pinch instead of continuing the pan', () => {
-    render(<Harness alwaysPannable />);
+    render(<Harness />);
     const surface = screen.getByTestId('surface');
 
-    firePointer(surface, 'pointerdown', { pointerId: 1, clientX: 50 });
-    firePointer(surface, 'pointermove', { pointerId: 1, clientX: 70 });
-    expect(surface.textContent).toBe('scale:1.00 pan:20,0');
+    // Zoom in first, then lift, so a fresh single-finger drag starts a pan.
+    firePointer(surface, 'pointerdown', { pointerId: 1, clientX: 100 });
+    firePointer(surface, 'pointerdown', { pointerId: 2, clientX: 120 });
+    firePointer(surface, 'pointermove', { pointerId: 1, clientX: 0 });
+    firePointer(surface, 'pointermove', { pointerId: 2, clientX: 100 });
+    firePointer(surface, 'pointerup', { pointerId: 1, clientX: 0 });
+    firePointer(surface, 'pointerup', { pointerId: 2, clientX: 100 });
+
+    firePointer(surface, 'pointerdown', { pointerId: 3, clientX: 50 });
+    firePointer(surface, 'pointermove', { pointerId: 3, clientX: 70 });
+    expect(surface.textContent).toBe('scale:5.00 pan:20,0');
 
     // Second finger joins -> pan must stop right where it was, handed off to pinch.
-    firePointer(surface, 'pointerdown', { pointerId: 2, clientX: 90 });
-    expect(surface.textContent).toBe('scale:1.00 pan:20,0');
+    firePointer(surface, 'pointerdown', { pointerId: 4, clientX: 90 });
+    expect(surface.textContent).toBe('scale:5.00 pan:20,0');
   });
 });

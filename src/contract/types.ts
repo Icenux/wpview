@@ -36,8 +36,6 @@ export type EditPatch =
 export interface Settings {
   /** default 4000 */
   slideshowMs: number;
-  /** default 'fit' */
-  zoomMode: 'fit' | 'actual';
   /** default 2 */
   doubleTapZoom: number;
   /** default 'system' */

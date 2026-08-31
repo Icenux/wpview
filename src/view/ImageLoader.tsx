@@ -4,9 +4,7 @@ interface ImageLoaderProps {
   src: string;
   placeholderSrc?: string | undefined;
   alt: string;
-  /** 'fit' = object-fit: contain, 'actual' = nativní rozměry (1:1 px). */
-  fit: 'fit' | 'actual';
-  /** Multiplikátor navrch fit/actual — drží ho usePinchZoom. */
+  /** Multiplikátor navrch fit-to-screen (object-fit: contain) — drží ho usePinchZoom. */
   zoom: number;
   /** Živý posun z panování (usePinchZoom) — px, 0 mimo pan/mimo zoomed-in stav. */
   panX?: number;
@@ -14,7 +12,7 @@ interface ImageLoaderProps {
 }
 
 /** Zobrazí `placeholderSrc` (thumbnail) dokud se nenačte `src` (fullSrc nebo edit blob). */
-export function ImageLoader({ src, placeholderSrc, alt, fit, zoom, panX = 0, panY = 0 }: ImageLoaderProps) {
+export function ImageLoader({ src, placeholderSrc, alt, zoom, panX = 0, panY = 0 }: ImageLoaderProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -56,7 +54,7 @@ export function ImageLoader({ src, placeholderSrc, alt, fit, zoom, panX = 0, pan
             panX !== 0 || panY !== 0 || zoom !== 1
               ? `translate(${panX}px, ${panY}px) scale(${zoom})`
               : undefined,
-          objectFit: fit === 'fit' ? 'contain' : 'none',
+          objectFit: 'contain',
         }}
       />
     </div>

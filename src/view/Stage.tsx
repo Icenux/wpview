@@ -12,7 +12,6 @@ interface StageProps {
   /** Sousední položky z okna (viz CONTRACT.md windowing) — pro živý sliding swipe. Chybí na kraji okna/galerie. */
   prevItem?: ViewerItem | undefined;
   nextItem?: ViewerItem | undefined;
-  zoomMode: 'fit' | 'actual';
   doubleTapZoom: number;
   onSwipeNext?: (() => void) | undefined;
   onSwipePrev?: (() => void) | undefined;
@@ -37,7 +36,6 @@ export function Stage({
   displaySrc,
   prevItem,
   nextItem,
-  zoomMode,
   doubleTapZoom,
   onSwipeNext,
   onSwipePrev,
@@ -47,18 +45,13 @@ export function Stage({
   swipeDisabled = false,
 }: StageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // 'actual' renders the photo at native pixel size (object-fit: none) —
-  // it overflows the viewport even with no pinch/double-tap zoom, so it
-  // must be pannable from scale 1, not just once scale climbs past it.
-  const alwaysPannable = zoomMode === 'actual';
-  const { scale, translateX, translateY, isPinching, isPanning, resetZoom, setZoom } = usePinchZoom(
-    containerRef,
-    { alwaysPannable },
-  );
-  // Zoomed in (either way) -> dragging pans the photo, not the carousel.
-  // Without this, a drag while zoomed fired onSwipeNext/onSwipeDown instead
-  // of panning — there was no way to see the rest of an enlarged photo.
-  const zoomedIn = scale > 1 || alwaysPannable;
+  const { scale, translateX, translateY, isPinching, isPanning, resetZoom, setZoom } =
+    usePinchZoom(containerRef, {});
+  // Zoomed in (pinch or double-tap) -> dragging pans the photo, not the
+  // carousel. Without this, a drag while zoomed fired onSwipeNext/
+  // onSwipeDown instead of panning — there was no way to see the rest of
+  // an enlarged photo.
+  const zoomedIn = scale > 1;
   const { dragOffsetX, dragOffsetY, isDragging, suppressTransition } = useSwipe(containerRef, {
     onSwipeNext,
     onSwipePrev,
@@ -72,13 +65,6 @@ export function Stage({
   useEffect(() => {
     resetZoom();
   }, [item.id, resetZoom]);
-
-  // Switching the zoomMode setting itself (Fit <-> Actual size) starts over —
-  // a leftover pan offset from one mode makes no sense once the image's
-  // rendered size/position changes under it.
-  useEffect(() => {
-    resetZoom();
-  }, [zoomMode, resetZoom]);
 
   const handleDoubleClick = useCallback(() => {
     if (scale > 1) {
@@ -134,7 +120,7 @@ export function Stage({
     >
       {prevItem && (
         <div className="wpview-stage__slide" style={prevStyle} aria-hidden="true">
-          <ImageLoader src={prevItem.fullSrc} placeholderSrc={prevItem.thumbSrc} alt="" fit={zoomMode} zoom={1} />
+          <ImageLoader src={prevItem.fullSrc} placeholderSrc={prevItem.thumbSrc} alt="" zoom={1} />
         </div>
       )}
       <div className="wpview-stage__slide wpview-stage__slide--current" style={currentStyle}>
@@ -142,7 +128,6 @@ export function Stage({
           src={displaySrc}
           placeholderSrc={item.thumbSrc}
           alt={typeof item.meta?.['filename'] === 'string' ? (item.meta['filename'] as string) : ''}
-          fit={zoomMode}
           zoom={scale}
           panX={translateX}
           panY={translateY}
@@ -150,7 +135,7 @@ export function Stage({
       </div>
       {nextItem && (
         <div className="wpview-stage__slide" style={nextStyle} aria-hidden="true">
-          <ImageLoader src={nextItem.fullSrc} placeholderSrc={nextItem.thumbSrc} alt="" fit={zoomMode} zoom={1} />
+          <ImageLoader src={nextItem.fullSrc} placeholderSrc={nextItem.thumbSrc} alt="" zoom={1} />
         </div>
       )}
     </div>

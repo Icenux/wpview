@@ -257,7 +257,6 @@ export function WpView(props: WpViewProps) {
         displaySrc={displaySrc}
         prevItem={prevItem}
         nextItem={nextItem}
-        zoomMode={settings.zoomMode}
         doubleTapZoom={settings.doubleTapZoom}
         onSwipeNext={goNext}
         onSwipePrev={goPrev}

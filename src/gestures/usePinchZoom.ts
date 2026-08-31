@@ -6,13 +6,6 @@ interface UsePinchZoomOptions {
   disabled?: boolean;
   min?: number;
   max?: number;
-  /**
-   * Fotka přetéká i BEZ pinch/double-tap zoomu (`scale` je pořád 1) — typicky
-   * `zoomMode: 'actual'` (viz Stage.tsx), kde `object-fit: none` vykreslí
-   * nativní rozlišení. Bez tohohle by jedním prstem šlo panovat, jen dokud
-   * `scale > 1` z pinche/double-tapu, a "actual size" by zůstal neposunutelný.
-   */
-  alwaysPannable?: boolean;
 }
 
 interface UsePinchZoomResult {
@@ -22,7 +15,7 @@ interface UsePinchZoomResult {
   translateY: number;
   isPinching: boolean;
   isPanning: boolean;
-  /** Vrátí scale i pan na výchozí stav (nová fotka, přepnutí zoomMode). */
+  /** Vrátí scale i pan na výchozí stav (nová fotka). */
   resetZoom: () => void;
   setZoom: (next: number) => void;
 }
@@ -32,16 +25,15 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 /**
- * Dvouprsté pinch-to-zoom PLUS jednoprsté panování, když je fotka přiblížená
- * (viz `alwaysPannable`/`scale > 1`) — nezávislé na useSwipe, sdílí jen
- * element ref. Stage si podle stejné podmínky useSwipe VYPÍNÁ (viz
- * `swipeDisabled`), ať si tažení jedním prstem nepřetahují dva handlery
- * najednou: nezoomováno -> useSwipe (navigace/zavření/tap), zoomováno ->
- * tenhle hook (panování).
+ * Dvouprsté pinch-to-zoom PLUS jednoprsté panování, jakmile je fotka
+ * přiblížená (`scale > 1`) — nezávislé na useSwipe, sdílí jen element ref.
+ * Stage si podle stejné podmínky useSwipe VYPÍNÁ (viz `swipeDisabled`), ať
+ * si tažení jedním prstem nepřetahují dva handlery najednou: nezoomováno ->
+ * useSwipe (navigace/zavření/tap), zoomováno -> tenhle hook (panování).
  */
 export function usePinchZoom(
   ref: RefObject<HTMLElement | null>,
-  { onZoomChange, disabled = false, min = 1, max = 6, alwaysPannable = false }: UsePinchZoomOptions,
+  { onZoomChange, disabled = false, min = 1, max = 6 }: UsePinchZoomOptions,
 ): UsePinchZoomResult {
   const [scale, setScaleState] = useState(1);
   const [translate, setTranslateState] = useState({ x: 0, y: 0 });
@@ -55,8 +47,6 @@ export function usePinchZoom(
   const panPointerId = useRef<number | null>(null);
   const panStart = useRef({ x: 0, y: 0 });
   const panOrigin = useRef({ x: 0, y: 0 });
-  const alwaysPannableRef = useRef(alwaysPannable);
-  alwaysPannableRef.current = alwaysPannable;
 
   const setZoom = useCallback(
     (next: number) => {
@@ -93,7 +83,7 @@ export function usePinchZoom(
         startDistance.current = distance();
         startScale.current = scaleRef.current;
         setIsPinching(true);
-      } else if (pointers.current.size === 1 && (scaleRef.current > 1 || alwaysPannableRef.current)) {
+      } else if (pointers.current.size === 1 && scaleRef.current > 1) {
         panPointerId.current = e.pointerId;
         panStart.current = { x: e.clientX, y: e.clientY };
         panOrigin.current = translateRef.current;
