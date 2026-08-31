@@ -8,10 +8,13 @@ interface ImageLoaderProps {
   fit: 'fit' | 'actual';
   /** Multiplikátor navrch fit/actual — drží ho usePinchZoom. */
   zoom: number;
+  /** Živý posun z panování (usePinchZoom) — px, 0 mimo pan/mimo zoomed-in stav. */
+  panX?: number;
+  panY?: number;
 }
 
 /** Zobrazí `placeholderSrc` (thumbnail) dokud se nenačte `src` (fullSrc nebo edit blob). */
-export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoaderProps) {
+export function ImageLoader({ src, placeholderSrc, alt, fit, zoom, panX = 0, panY = 0 }: ImageLoaderProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -47,7 +50,12 @@ export function ImageLoader({ src, placeholderSrc, alt, fit, zoom }: ImageLoader
         className="wpview-image-loader__full"
         style={{
           opacity: loaded ? 1 : 0,
-          transform: zoom !== 1 ? `scale(${zoom})` : undefined,
+          // translate() OUTSIDE scale() — see usePinchZoom.ts's onPointerMove
+          // comment: keeps a screen-pixel pan delta 1:1 regardless of zoom.
+          transform:
+            panX !== 0 || panY !== 0 || zoom !== 1
+              ? `translate(${panX}px, ${panY}px) scale(${zoom})`
+              : undefined,
           objectFit: fit === 'fit' ? 'contain' : 'none',
         }}
       />

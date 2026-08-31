@@ -98,6 +98,17 @@ ale `EditPatch.deg` drží jen kladné násobky 90). Obě tlačítka gatuje stej
 **Windowing.** `items` je okno kolem `index`, ne celá galerie. Na kraji okna
 wpview volá `onRequestMore(dir)`; `hasMore` říká, jestli má smysl žádat dál.
 
+**Zoom/pan.** `zoomMode: 'fit'` = fotka se zmenší/zvětší, ať se celá vejde na
+obrazovku (`object-fit: contain`). `zoomMode: 'actual'` = nativní rozlišení
+(`object-fit: none`) — u běžné fotky větší, než kolik má obrazovka pixelů,
+takže se **nevejde celá**; totéž platí po pinch/double-tap přiblížení v
+kterémkoli režimu. Kdykoli je fotka takhle zvětšená (`scale > 1` NEBO
+`zoomMode === 'actual'`), tažení jedním prstem přestává navigovat/zavírat a
+místo toho **panuje** — vidět zbytek fotky je jinak nemožné. Swipe
+next/prev/close se vrátí, jakmile se `scale` vrátí na 1 a `zoomMode` je
+`'fit'` (klávesové šipky navigují bez ohledu na zoom/pan, ty žádný pointer
+gesto nepoužívají).
+
 **Settings — dvě nezávislé osy.** Každá je zvlášť controlled nebo uncontrolled
 podle toho, jestli dodáš dvojici prop + handler:
 

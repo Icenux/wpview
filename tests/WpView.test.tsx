@@ -192,6 +192,41 @@ describe('WpView swipe carousel (live sliding, not a jump-cut replace)', () => {
   });
 });
 
+describe('WpView zoom + pan (bug: dragging a zoomed photo used to swipe/close instead of panning)', () => {
+  it('a drag while zoomed in pans the photo instead of swiping to the next one or closing', async () => {
+    const onIndexChange = vi.fn();
+    const onClose = vi.fn();
+    render(<WpView {...baseProps({ index: 0, onIndexChange, onClose })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    // Double-tap zooms in (doubleTapZoom default is 2 — see contract/defaults.ts).
+    fireEvent.doubleClick(stage);
+
+    firePointer(stage, 'pointerdown', { clientX: 200, clientY: 200 });
+    firePointer(stage, 'pointermove', { clientX: 100, clientY: 260 });
+    firePointer(stage, 'pointerup', { clientX: 100, clientY: 260 });
+
+    await new Promise((r) => setTimeout(r, 250));
+    expect(onIndexChange).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
+
+    const img = document.querySelector('.wpview-stage__slide--current .wpview-image-loader__full');
+    expect(img?.getAttribute('style')).toContain('translate(-100px, 60px)');
+  });
+
+  it('a drag while NOT zoomed still swipes/closes as before', async () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...baseProps({ index: 0, onIndexChange })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 300, clientY: 150 });
+    firePointer(stage, 'pointermove', { clientX: 100, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 100, clientY: 150 });
+
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1));
+  });
+});
+
 describe('WpView swipe-to-close', () => {
   it('a downward drag past the threshold calls onClose', () => {
     const onClose = vi.fn();

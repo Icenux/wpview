@@ -47,6 +47,18 @@ export function Stage({
   swipeDisabled = false,
 }: StageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // 'actual' renders the photo at native pixel size (object-fit: none) —
+  // it overflows the viewport even with no pinch/double-tap zoom, so it
+  // must be pannable from scale 1, not just once scale climbs past it.
+  const alwaysPannable = zoomMode === 'actual';
+  const { scale, translateX, translateY, isPinching, isPanning, resetZoom, setZoom } = usePinchZoom(
+    containerRef,
+    { alwaysPannable },
+  );
+  // Zoomed in (either way) -> dragging pans the photo, not the carousel.
+  // Without this, a drag while zoomed fired onSwipeNext/onSwipeDown instead
+  // of panning — there was no way to see the rest of an enlarged photo.
+  const zoomedIn = scale > 1 || alwaysPannable;
   const { dragOffsetX, dragOffsetY, isDragging, suppressTransition } = useSwipe(containerRef, {
     onSwipeNext,
     onSwipePrev,
@@ -54,17 +66,27 @@ export function Stage({
     onTap,
     canSwipeNext: !!nextItem,
     canSwipePrev: !!prevItem,
-    disabled: swipeDisabled,
+    disabled: swipeDisabled || zoomedIn,
   });
-  const { scale, isPinching, resetZoom, setZoom } = usePinchZoom(containerRef, {});
 
   useEffect(() => {
     resetZoom();
   }, [item.id, resetZoom]);
 
+  // Switching the zoomMode setting itself (Fit <-> Actual size) starts over —
+  // a leftover pan offset from one mode makes no sense once the image's
+  // rendered size/position changes under it.
+  useEffect(() => {
+    resetZoom();
+  }, [zoomMode, resetZoom]);
+
   const handleDoubleClick = useCallback(() => {
-    setZoom(scale > 1 ? 1 : doubleTapZoom);
-  }, [scale, doubleTapZoom, setZoom]);
+    if (scale > 1) {
+      resetZoom();
+    } else {
+      setZoom(doubleTapZoom);
+    }
+  }, [scale, doubleTapZoom, setZoom, resetZoom]);
 
   const handleContextMenu = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>) => {
@@ -81,7 +103,7 @@ export function Stage({
   // false (jsou, v tu chvíli gesto už skončilo).
   const transition = suppressTransition
     ? 'none'
-    : isDragging || isPinching
+    : isDragging || isPinching || isPanning
       ? 'none'
       : `transform ${SWIPE_SETTLE_MS}ms ease, opacity ${SWIPE_SETTLE_MS}ms ease`;
 
@@ -122,6 +144,8 @@ export function Stage({
           alt={typeof item.meta?.['filename'] === 'string' ? (item.meta['filename'] as string) : ''}
           fit={zoomMode}
           zoom={scale}
+          panX={translateX}
+          panY={translateY}
         />
       </div>
       {nextItem && (

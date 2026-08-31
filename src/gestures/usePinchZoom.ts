@@ -6,11 +6,23 @@ interface UsePinchZoomOptions {
   disabled?: boolean;
   min?: number;
   max?: number;
+  /**
+   * Fotka přetéká i BEZ pinch/double-tap zoomu (`scale` je pořád 1) — typicky
+   * `zoomMode: 'actual'` (viz Stage.tsx), kde `object-fit: none` vykreslí
+   * nativní rozlišení. Bez tohohle by jedním prstem šlo panovat, jen dokud
+   * `scale > 1` z pinche/double-tapu, a "actual size" by zůstal neposunutelný.
+   */
+  alwaysPannable?: boolean;
 }
 
 interface UsePinchZoomResult {
   scale: number;
+  /** Živý posun panované fotky (px, obrazovkový prostor — viz onPointerMove). 0 mimo pan. */
+  translateX: number;
+  translateY: number;
   isPinching: boolean;
+  isPanning: boolean;
+  /** Vrátí scale i pan na výchozí stav (nová fotka, přepnutí zoomMode). */
   resetZoom: () => void;
   setZoom: (next: number) => void;
 }
@@ -19,17 +31,32 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-/** Dvouprsté pinch přes Pointer Events. Nezávislé na useSwipe, sdílí jen element ref. */
+/**
+ * Dvouprsté pinch-to-zoom PLUS jednoprsté panování, když je fotka přiblížená
+ * (viz `alwaysPannable`/`scale > 1`) — nezávislé na useSwipe, sdílí jen
+ * element ref. Stage si podle stejné podmínky useSwipe VYPÍNÁ (viz
+ * `swipeDisabled`), ať si tažení jedním prstem nepřetahují dva handlery
+ * najednou: nezoomováno -> useSwipe (navigace/zavření/tap), zoomováno ->
+ * tenhle hook (panování).
+ */
 export function usePinchZoom(
   ref: RefObject<HTMLElement | null>,
-  { onZoomChange, disabled = false, min = 1, max = 6 }: UsePinchZoomOptions,
+  { onZoomChange, disabled = false, min = 1, max = 6, alwaysPannable = false }: UsePinchZoomOptions,
 ): UsePinchZoomResult {
   const [scale, setScaleState] = useState(1);
+  const [translate, setTranslateState] = useState({ x: 0, y: 0 });
   const [isPinching, setIsPinching] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   const scaleRef = useRef(1);
+  const translateRef = useRef({ x: 0, y: 0 });
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const startDistance = useRef(0);
   const startScale = useRef(1);
+  const panPointerId = useRef<number | null>(null);
+  const panStart = useRef({ x: 0, y: 0 });
+  const panOrigin = useRef({ x: 0, y: 0 });
+  const alwaysPannableRef = useRef(alwaysPannable);
+  alwaysPannableRef.current = alwaysPannable;
 
   const setZoom = useCallback(
     (next: number) => {
@@ -40,6 +67,11 @@ export function usePinchZoom(
     },
     [min, max, onZoomChange],
   );
+
+  const setPan = useCallback((x: number, y: number) => {
+    translateRef.current = { x, y };
+    setTranslateState({ x, y });
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -55,9 +87,17 @@ export function usePinchZoom(
     function onPointerDown(e: PointerEvent) {
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.current.size === 2) {
+        // Druhý prst dorazil uprostřed panování jedním prstem -> přebírá to pinch.
+        panPointerId.current = null;
+        setIsPanning(false);
         startDistance.current = distance();
         startScale.current = scaleRef.current;
         setIsPinching(true);
+      } else if (pointers.current.size === 1 && (scaleRef.current > 1 || alwaysPannableRef.current)) {
+        panPointerId.current = e.pointerId;
+        panStart.current = { x: e.clientX, y: e.clientY };
+        panOrigin.current = translateRef.current;
+        setIsPanning(true);
       }
     }
 
@@ -67,6 +107,16 @@ export function usePinchZoom(
       if (pointers.current.size === 2 && startDistance.current > 0) {
         const ratio = distance() / startDistance.current;
         setZoom(startScale.current * ratio);
+        return;
+      }
+      if (pointers.current.size === 1 && panPointerId.current === e.pointerId) {
+        // translate() is the OUTER transform (see ImageLoader.tsx —
+        // `translate(...) scale(...)`), so it operates in already-scaled
+        // screen space: a 1px finger move is always a 1px shift on screen,
+        // whatever `scale` currently is. No division by scale needed here.
+        const dx = e.clientX - panStart.current.x;
+        const dy = e.clientY - panStart.current.y;
+        setPan(panOrigin.current.x + dx, panOrigin.current.y + dy);
       }
     }
 
@@ -75,6 +125,10 @@ export function usePinchZoom(
       if (pointers.current.size < 2) {
         setIsPinching(false);
         startDistance.current = 0;
+      }
+      if (panPointerId.current === e.pointerId) {
+        panPointerId.current = null;
+        setIsPanning(false);
       }
     }
 
@@ -88,9 +142,20 @@ export function usePinchZoom(
       el.removeEventListener('pointerup', endPointer);
       el.removeEventListener('pointercancel', endPointer);
     };
-  }, [ref, disabled, setZoom]);
+  }, [ref, disabled, setZoom, setPan]);
 
-  const resetZoom = useCallback(() => setZoom(1), [setZoom]);
+  const resetZoom = useCallback(() => {
+    setZoom(1);
+    setPan(0, 0);
+  }, [setZoom, setPan]);
 
-  return { scale, isPinching, resetZoom, setZoom };
+  return {
+    scale,
+    translateX: translate.x,
+    translateY: translate.y,
+    isPinching,
+    isPanning,
+    resetZoom,
+    setZoom,
+  };
 }
