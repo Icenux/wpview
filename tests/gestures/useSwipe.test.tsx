@@ -21,11 +21,15 @@ function Harness({
   onSwipePrev,
   onSwipeDown,
   onTap,
+  canSwipeNext,
+  canSwipePrev,
 }: {
   onSwipeNext: () => void;
   onSwipePrev: () => void;
   onSwipeDown?: () => void;
   onTap?: () => void;
+  canSwipeNext?: boolean;
+  canSwipePrev?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const { dragOffsetX, dragOffsetY } = useSwipe(ref, {
@@ -33,18 +37,20 @@ function Harness({
     onSwipePrev,
     onSwipeDown,
     onTap,
+    canSwipeNext,
+    canSwipePrev,
     threshold: 50,
     downThreshold: 100,
   });
   return (
-    <div ref={ref} data-testid="surface">
+    <div ref={ref} data-testid="surface" style={{ width: '300px' }}>
       offset:{dragOffsetX},{dragOffsetY}
     </div>
   );
 }
 
 describe('useSwipe / horizontal', () => {
-  it('calls onSwipeNext after a leftward drag past the threshold', () => {
+  it('calls onSwipeNext after a leftward drag past the threshold, once it settles', async () => {
     const onSwipeNext = vi.fn();
     const onSwipePrev = vi.fn();
     render(<Harness onSwipeNext={onSwipeNext} onSwipePrev={onSwipePrev} />);
@@ -54,11 +60,14 @@ describe('useSwipe / horizontal', () => {
     firePointer(surface, 'pointermove', { clientX: 100 });
     firePointer(surface, 'pointerup', { clientX: 100 });
 
-    expect(onSwipeNext).toHaveBeenCalledTimes(1);
+    // Committed swipes finish sliding to the edge before the callback fires
+    // (see useSwipe.ts settle()) — not called synchronously on pointerup.
+    expect(onSwipeNext).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(onSwipeNext).toHaveBeenCalledTimes(1));
     expect(onSwipePrev).not.toHaveBeenCalled();
   });
 
-  it('calls onSwipePrev after a rightward drag past the threshold', () => {
+  it('calls onSwipePrev after a rightward drag past the threshold, once it settles', async () => {
     const onSwipeNext = vi.fn();
     const onSwipePrev = vi.fn();
     render(<Harness onSwipeNext={onSwipeNext} onSwipePrev={onSwipePrev} />);
@@ -68,7 +77,22 @@ describe('useSwipe / horizontal', () => {
     firePointer(surface, 'pointermove', { clientX: 200 });
     firePointer(surface, 'pointerup', { clientX: 200 });
 
-    expect(onSwipePrev).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(onSwipePrev).toHaveBeenCalledTimes(1));
+    expect(onSwipeNext).not.toHaveBeenCalled();
+  });
+
+  it('rubber-bands back (never settles/commits) when there is no next item to swipe to', async () => {
+    const onSwipeNext = vi.fn();
+    const onSwipePrev = vi.fn();
+    render(<Harness onSwipeNext={onSwipeNext} onSwipePrev={onSwipePrev} canSwipeNext={false} />);
+    const surface = screen.getByTestId('surface');
+
+    firePointer(surface, 'pointerdown', { clientX: 200 });
+    firePointer(surface, 'pointermove', { clientX: 100 });
+    firePointer(surface, 'pointerup', { clientX: 100 });
+
+    // Give the (non-existent) settle timer a chance to have fired if it wrongly did.
+    await new Promise((r) => setTimeout(r, 250));
     expect(onSwipeNext).not.toHaveBeenCalled();
   });
 
@@ -178,7 +202,7 @@ describe('useSwipe / vertical (swipe-to-close)', () => {
     expect(onSwipeDown).not.toHaveBeenCalled();
   });
 
-  it('a mostly-horizontal drag never triggers onSwipeDown even if it dips downward', () => {
+  it('a mostly-horizontal drag never triggers onSwipeDown even if it dips downward', async () => {
     const onSwipeNext = vi.fn();
     const onSwipePrev = vi.fn();
     const onSwipeDown = vi.fn();
@@ -190,7 +214,7 @@ describe('useSwipe / vertical (swipe-to-close)', () => {
     firePointer(surface, 'pointermove', { clientX: 250, clientY: 130 });
     firePointer(surface, 'pointerup', { clientX: 250, clientY: 130 });
 
+    await vi.waitFor(() => expect(onSwipePrev).toHaveBeenCalledTimes(1));
     expect(onSwipeDown).not.toHaveBeenCalled();
-    expect(onSwipePrev).toHaveBeenCalledTimes(1);
   });
 });

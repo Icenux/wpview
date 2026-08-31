@@ -62,6 +62,8 @@ export function WpView(props: WpViewProps) {
   const [chromeVisible, setChromeVisible] = useState(true);
 
   const currentItem = items[index];
+  const prevItem = items[index - 1];
+  const nextItem = items[index + 1];
 
   const handlers: ActionHandlers = useMemo(
     () => ({ onRate, onFavorite, onTagToggle, onEdit, onDelete, onInfoOpen }),
@@ -253,6 +255,8 @@ export function WpView(props: WpViewProps) {
       <Stage
         item={currentItem}
         displaySrc={displaySrc}
+        prevItem={prevItem}
+        nextItem={nextItem}
         zoomMode={settings.zoomMode}
         doubleTapZoom={settings.doubleTapZoom}
         onSwipeNext={goNext}

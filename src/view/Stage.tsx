@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import type { ViewerItem } from '../contract/types';
-import { useSwipe } from '../gestures/useSwipe';
+import { useSwipe, SWIPE_SETTLE_MS } from '../gestures/useSwipe';
 import { usePinchZoom } from '../gestures/usePinchZoom';
 import { ImageLoader } from './ImageLoader';
 
@@ -9,6 +9,9 @@ interface StageProps {
   item: ViewerItem;
   /** Vyřešený zdroj — edit blobUrl (viz state/reducer edit slice) nebo item.fullSrc. */
   displaySrc: string;
+  /** Sousední položky z okna (viz CONTRACT.md windowing) — pro živý sliding swipe. Chybí na kraji okna/galerie. */
+  prevItem?: ViewerItem | undefined;
+  nextItem?: ViewerItem | undefined;
   zoomMode: 'fit' | 'actual';
   doubleTapZoom: number;
   onSwipeNext?: (() => void) | undefined;
@@ -20,10 +23,20 @@ interface StageProps {
   swipeDisabled?: boolean;
 }
 
-/** Skládá gesta (swipe + pinch) nad jedním containerem a vykresluje aktuální fotku. */
+/**
+ * Skládá gesta (swipe + pinch) nad jedním containerem a vykresluje aktuální
+ * fotku PLUS sousední dvě v odsunutých slotech (-100%/0/+100%), ať je vidět
+ * plynulý swipe mezi fotkami, ne jen posun a skoková náhrada. `dragOffsetX`
+ * (živé tažení i dojíždějící swipe po puštění — viz useSwipe) se přičítá ke
+ * všem třem slotům stejně; funguje, protože se sousední fotka po dojetí
+ * přehodí na "current" ve STEJNÉM tiku, kdy offset skočí zpátky na 0 (matika
+ * v komentářích níž) — vizuálně navazuje beze švu.
+ */
 export function Stage({
   item,
   displaySrc,
+  prevItem,
+  nextItem,
   zoomMode,
   doubleTapZoom,
   onSwipeNext,
@@ -34,11 +47,13 @@ export function Stage({
   swipeDisabled = false,
 }: StageProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { dragOffsetX, dragOffsetY, isDragging } = useSwipe(containerRef, {
+  const { dragOffsetX, dragOffsetY, isDragging, suppressTransition } = useSwipe(containerRef, {
     onSwipeNext,
     onSwipePrev,
     onSwipeDown,
     onTap,
+    canSwipeNext: !!nextItem,
+    canSwipePrev: !!prevItem,
     disabled: swipeDisabled,
   });
   const { scale, isPinching, resetZoom, setZoom } = usePinchZoom(containerRef, {});
@@ -60,15 +75,33 @@ export function Stage({
     [onContextMenu],
   );
 
-  const transform =
-    dragOffsetX !== 0
-      ? `translateX(${dragOffsetX}px)`
-      : dragOffsetY !== 0
-        ? `translateY(${dragOffsetY}px)`
-        : undefined;
+  // suppressTransition vyhrává vždy — je to přesně ten jeden snímek, kdy
+  // offset skáče zpátky na 0 po přehození indexu a NESMÍ se to animovat
+  // (viz useSwipe.ts settle()), i kdyby isDragging/isPinching zrovna byly
+  // false (jsou, v tu chvíli gesto už skončilo).
+  const transition = suppressTransition
+    ? 'none'
+    : isDragging || isPinching
+      ? 'none'
+      : `transform ${SWIPE_SETTLE_MS}ms ease, opacity ${SWIPE_SETTLE_MS}ms ease`;
+
   // Táhnutí dolů (swipe-to-close) bledne úměrně vzdálenosti — vizuální signál,
   // že puštění zavře. Nikdy pod 0.4, ať fotka úplně nezmizí před release.
-  const opacity = dragOffsetY > 0 ? Math.max(0.4, 1 - dragOffsetY / 400) : 1;
+  const currentOpacity = dragOffsetY > 0 ? Math.max(0.4, 1 - dragOffsetY / 400) : 1;
+
+  const currentStyle: CSSProperties = {
+    transform: `translateX(${dragOffsetX}px) translateY(${dragOffsetY}px)`,
+    opacity: currentOpacity,
+    transition,
+  };
+  const prevStyle: CSSProperties = {
+    transform: `translateX(calc(-100% + ${dragOffsetX}px))`,
+    transition,
+  };
+  const nextStyle: CSSProperties = {
+    transform: `translateX(calc(100% + ${dragOffsetX}px))`,
+    transition,
+  };
 
   return (
     <div
@@ -76,19 +109,26 @@ export function Stage({
       className="wpview-stage"
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
-      style={{
-        transform,
-        opacity,
-        transition: isDragging || isPinching ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
-      }}
     >
-      <ImageLoader
-        src={displaySrc}
-        placeholderSrc={item.thumbSrc}
-        alt={typeof item.meta?.['filename'] === 'string' ? (item.meta['filename'] as string) : ''}
-        fit={zoomMode}
-        zoom={scale}
-      />
+      {prevItem && (
+        <div className="wpview-stage__slide" style={prevStyle} aria-hidden="true">
+          <ImageLoader src={prevItem.fullSrc} placeholderSrc={prevItem.thumbSrc} alt="" fit={zoomMode} zoom={1} />
+        </div>
+      )}
+      <div className="wpview-stage__slide wpview-stage__slide--current" style={currentStyle}>
+        <ImageLoader
+          src={displaySrc}
+          placeholderSrc={item.thumbSrc}
+          alt={typeof item.meta?.['filename'] === 'string' ? (item.meta['filename'] as string) : ''}
+          fit={zoomMode}
+          zoom={scale}
+        />
+      </div>
+      {nextItem && (
+        <div className="wpview-stage__slide" style={nextStyle} aria-hidden="true">
+          <ImageLoader src={nextItem.fullSrc} placeholderSrc={nextItem.thumbSrc} alt="" fit={zoomMode} zoom={1} />
+        </div>
+      )}
     </div>
   );
 }

@@ -39,15 +39,25 @@
 .wpview-stage {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  overflow: hidden;
   /* Belt-and-suspenders with .wpview's touch-action: none (spec says it
      should already intersect down to here) — set directly on the element
      that actually owns the pointerdown/pointermove listeners, so a real
      touchscreen can't hand a swipe starting here to the browser's own
      panning/edge-navigation gesture before useSwipe sees it. */
   touch-action: none;
+}
+
+/* Up to 3 slides (prev/current/next) share the same box and slide across it
+   via transform — NOT flex-laid-out siblings, or translateX would move them
+   relative to each other instead of relative to the stage. */
+.wpview-stage__slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
 }
 
 .wpview-image-loader {
@@ -137,6 +147,21 @@
 
 .wpview-rating-stars {
   display: flex;
+  align-items: center;
+}
+
+.wpview-rating-stars--readonly {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--wpview-fg-muted);
+}
+
+.wpview-rating-stars__picker {
+  display: flex;
   gap: 2px;
 }
 
@@ -154,6 +179,27 @@
 
 .wpview-rating-stars__star:disabled {
   cursor: default;
+}
+
+.wpview-rating-stars__toggle {
+  position: relative;
+  color: var(--wpview-fg-muted);
+}
+
+/* Small numeric badge on the collapsed single-star toggle so the current
+   rating is readable at a glance without expanding the picker. */
+.wpview-rating-stars__badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 12px;
+  padding: 0 2px;
+  border-radius: 999px;
+  background: var(--wpview-accent);
+  color: #fff;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
 }
 
 .wpview-tag-chips {

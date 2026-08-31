@@ -64,7 +64,7 @@ describe('WpView capability gate', () => {
       />,
     );
 
-    expect(screen.getByLabelText('4 stars')).toBeInTheDocument();
+    expect(screen.getByLabelText('Set rating')).toBeInTheDocument();
     expect(screen.getByLabelText('Delete')).toBeInTheDocument();
     expect(screen.queryByLabelText('Favorite')).not.toBeInTheDocument();
   });
@@ -76,15 +76,24 @@ describe('WpView capability gate', () => {
 });
 
 describe('WpView rating', () => {
-  it('shows the optimistic value immediately and emits onRate', () => {
+  it('collapses to a single star; tapping it opens the picker, and picking a value emits onRate and re-collapses', () => {
     const onRate = vi.fn();
     render(<WpView {...baseProps({ capabilities: { rate: true }, onRate })} />);
 
+    // Collapsed: just the one toggle star, not all five (see RatingStars.tsx —
+    // five permanent stars were the biggest single contributor to the
+    // toolbar overflowing on a phone-width viewport).
+    expect(screen.getByLabelText('Set rating')).toBeInTheDocument();
+    expect(screen.queryByLabelText('4 stars')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Set rating'));
     const fourthStar = screen.getByLabelText('4 stars');
     fireEvent.click(fourthStar);
 
     expect(onRate).toHaveBeenCalledWith('a', 4);
-    expect(fourthStar.className).toContain('wpview-rating-stars__star--filled');
+    // Picking a value re-collapses the picker back to the single toggle.
+    expect(screen.queryByLabelText('4 stars')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Rating: 4 stars. Tap to change.')).toBeInTheDocument();
   });
 });
 
@@ -126,20 +135,20 @@ describe('WpView chrome toggle (tap to hide/show controls)', () => {
     render(<WpView {...baseProps({ onClose, capabilities: { rate: true }, onRate: vi.fn() })} />);
 
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
-    expect(screen.getByLabelText('4 stars')).toBeInTheDocument();
+    expect(screen.getByLabelText('Set rating')).toBeInTheDocument();
 
     const stage = document.querySelector('.wpview-stage') as HTMLElement;
     firePointer(stage, 'pointerdown', { clientX: 150, clientY: 150 });
     firePointer(stage, 'pointerup', { clientX: 150, clientY: 150 });
 
     expect(screen.queryByLabelText('Close')).not.toBeInTheDocument();
-    expect(screen.queryByLabelText('4 stars')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Set rating')).not.toBeInTheDocument();
 
     firePointer(stage, 'pointerdown', { clientX: 150, clientY: 150 });
     firePointer(stage, 'pointerup', { clientX: 150, clientY: 150 });
 
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
-    expect(screen.getByLabelText('4 stars')).toBeInTheDocument();
+    expect(screen.getByLabelText('Set rating')).toBeInTheDocument();
   });
 
   it('a real drag on the stage (swipe) does not toggle the chrome', () => {
@@ -153,6 +162,33 @@ describe('WpView chrome toggle (tap to hide/show controls)', () => {
     firePointer(stage, 'pointerup', { clientX: 100, clientY: 150 });
 
     expect(screen.getByLabelText('Close')).toBeInTheDocument();
+  });
+});
+
+describe('WpView swipe carousel (live sliding, not a jump-cut replace)', () => {
+  it('renders neighboring slides alongside the current one for a live sliding transition', () => {
+    render(<WpView {...baseProps({ index: 0 })} />);
+
+    // index 0 of a 2-item window: current + next, no prev.
+    const slides = document.querySelectorAll('.wpview-stage__slide');
+    expect(slides.length).toBe(2);
+    expect(document.querySelector('.wpview-stage__slide--current')).toBeInTheDocument();
+  });
+
+  it('a committed swipe only advances the index after the slide finishes animating off-stage, not instantly on release', async () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...baseProps({ index: 0, onIndexChange })} />);
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 300, clientY: 150 });
+    firePointer(stage, 'pointermove', { clientX: 100, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 100, clientY: 150 });
+
+    // Bug report: the photo used to visually "jump and replace" instead of
+    // sliding — this asserts the index change is deferred until the slide
+    // has settled (see useSwipe.ts settle()), not fired synchronously.
+    expect(onIndexChange).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1));
   });
 });
 
