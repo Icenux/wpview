@@ -65,9 +65,10 @@ type EditPatch =
   | { type: 'crop';   rect: { x: number; y: number; w: number; h: number }; blob: Blob };
 
 interface Settings {
-  slideshowMs: number;                // default 4000
-  doubleTapZoom: number;              // default 2
-  theme: 'dark' | 'light' | 'system'; // default 'system'
+  slideshowMs: number;                          // default 4000
+  slideshowTransition: 'none' | 'fade' | 'slide'; // default 'fade'
+  doubleTapZoom: number;                        // default 2
+  theme: 'dark' | 'light' | 'system';           // default 'system'
 }
 ```
 
@@ -107,6 +108,16 @@ navigovat/zavírat a místo toho **panuje** — vidět zbytek zvětšené fotky 
 jinak nemožné. Swipe next/prev/close se vrátí, jakmile se `scale` vrátí na
 1 (klávesové šipky navigují bez ohledu na zoom/pan, ty žádný pointer gesto
 nepoužívají).
+
+**Slideshow přechod.** `slideshowTransition` řídí, jak vypadá automatické
+přehození při prezentaci (`present`/`onTogglePresent`), ne manuální
+swipe/šipky — ty jsou vždycky okamžité. `'slide'` spustí přesně tu samou
+dojíždějící animaci jako dokončený swipe (viz useSwipe.ts `triggerAdvance`);
+`'fade'` je nezávislý cross-fade (dvě překrývající se vrstvy, žádný
+vodorovný posun); `'none'` přehodí index okamžitě, bez animace. Ve všech
+třech případech u `'fade'`/`'slide'` platí totéž pravidlo jako u
+dokončeného swipe: `onIndexChange` se zavolá až PO animaci, ne v okamžiku,
+kdy uplyne `slideshowMs`.
 
 **Settings — dvě nezávislé osy.** Každá je zvlášť controlled nebo uncontrolled
 podle toho, jestli dodáš dvojici prop + handler:

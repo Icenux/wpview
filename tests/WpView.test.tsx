@@ -2,7 +2,7 @@ import type { ComponentProps } from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WpView } from '../src/WpView';
-import type { ItemState, ViewerItem } from '../src/contract/types';
+import type { ItemState, Settings, ViewerItem } from '../src/contract/types';
 
 // Raw dispatchEvent doesn't auto-wrap in act() the way RTL's fireEvent does.
 function firePointer(
@@ -224,6 +224,57 @@ describe('WpView zoom + pan (bug: dragging a zoomed photo used to swipe/close in
     firePointer(stage, 'pointerup', { clientX: 100, clientY: 150 });
 
     await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1));
+  });
+});
+
+describe('WpView slideshow transition', () => {
+  function presentProps(
+    slideshowTransition: Settings['slideshowTransition'],
+    overrides: Partial<ComponentProps<typeof WpView>> = {},
+  ) {
+    return baseProps({
+      capabilities: { present: true },
+      // Controlled settings (CONTRACT.md) — short interval so the test
+      // doesn't wait out the real 4s default, and picks the transition
+      // under test without touching localStorage between tests.
+      settings: { slideshowMs: 30, slideshowTransition },
+      onSettingsChange: vi.fn(),
+      ...overrides,
+    });
+  }
+
+  it("'none' advances the index immediately when the slideshow interval fires", async () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...presentProps('none', { index: 0, onIndexChange })} />);
+
+    fireEvent.click(screen.getByLabelText('Slideshow'));
+
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1), { timeout: 1000 });
+  });
+
+  it("'fade' defers the index change until the cross-fade finishes, not the moment the interval fires", async () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...presentProps('fade', { index: 0, onIndexChange })} />);
+
+    fireEvent.click(screen.getByLabelText('Slideshow'));
+
+    // interval (30ms) has fired well before this, but FADE_MS (400ms) hasn't elapsed yet.
+    await new Promise((r) => setTimeout(r, 150));
+    expect(onIndexChange).not.toHaveBeenCalled();
+
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1), { timeout: 1000 });
+  });
+
+  it("'slide' defers the index change until the carousel settle finishes, same mechanism as a manual swipe", async () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...presentProps('slide', { index: 0, onIndexChange })} />);
+
+    fireEvent.click(screen.getByLabelText('Slideshow'));
+
+    await new Promise((r) => setTimeout(r, 150));
+    expect(onIndexChange).not.toHaveBeenCalled();
+
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1), { timeout: 1000 });
   });
 });
 

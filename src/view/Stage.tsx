@@ -1,9 +1,22 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from 'react';
 import type { ViewerItem } from '../contract/types';
 import { useSwipe, SWIPE_SETTLE_MS } from '../gestures/useSwipe';
 import { usePinchZoom } from '../gestures/usePinchZoom';
 import { ImageLoader } from './ImageLoader';
+
+/** Musí sedět s CSS transition duration na fade overlay níž. */
+export const FADE_MS = 400;
+
+export interface StageHandle {
+  /**
+   * Programové přehození o jednu fotku se zvoleným typem přechodu — volá
+   * Slideshow.tsx přes WpView.tsx (viz `settings.slideshowTransition`).
+   * 'none' sem vůbec nechodí, to WpView řeší rovnou (goNext/goPrev), bez
+   * animace není co ve Stage dělat.
+   */
+  advance(direction: 'next' | 'prev', transition: 'fade' | 'slide'): void;
+}
 
 interface StageProps {
   item: ViewerItem;
@@ -30,20 +43,27 @@ interface StageProps {
  * všem třem slotům stejně; funguje, protože se sousední fotka po dojetí
  * přehodí na "current" ve STEJNÉM tiku, kdy offset skočí zpátky na 0 (matika
  * v komentářích níž) — vizuálně navazuje beze švu.
+ *
+ * `ref` (StageHandle.advance) dává WpView/Slideshow programový přístup ke
+ * stejné dojíždějící swipe animaci ('slide') nebo k samostatnému cross-fade
+ * ('fade') — auto-advance bez prstu na spouštěči.
  */
-export function Stage({
-  item,
-  displaySrc,
-  prevItem,
-  nextItem,
-  doubleTapZoom,
-  onSwipeNext,
-  onSwipePrev,
-  onSwipeDown,
-  onTap,
-  onContextMenu,
-  swipeDisabled = false,
-}: StageProps) {
+export const Stage = forwardRef<StageHandle, StageProps>(function Stage(
+  {
+    item,
+    displaySrc,
+    prevItem,
+    nextItem,
+    doubleTapZoom,
+    onSwipeNext,
+    onSwipePrev,
+    onSwipeDown,
+    onTap,
+    onContextMenu,
+    swipeDisabled = false,
+  },
+  ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { scale, translateX, translateY, isPinching, isPanning, resetZoom, setZoom } =
     usePinchZoom(containerRef, {});
@@ -52,7 +72,7 @@ export function Stage({
   // onSwipeDown instead of panning — there was no way to see the rest of
   // an enlarged photo.
   const zoomedIn = scale > 1;
-  const { dragOffsetX, dragOffsetY, isDragging, suppressTransition } = useSwipe(containerRef, {
+  const { dragOffsetX, dragOffsetY, isDragging, suppressTransition, triggerAdvance } = useSwipe(containerRef, {
     onSwipeNext,
     onSwipePrev,
     onSwipeDown,
@@ -61,6 +81,54 @@ export function Stage({
     canSwipePrev: !!prevItem,
     disabled: swipeDisabled || zoomedIn,
   });
+
+  // Cross-fade auto-advance (transitionType: 'fade') — nezávislé na useSwipe,
+  // ta řeší jen pozici (translateX), tohle jen opacity dvou překrývajících
+  // se vrstev na stejném místě. `progressing` začíná false (overlay
+  // namountovaný na opacity 0, current na 1), o snímek později (2x rAF, ať
+  // to prohlížeč stihne vykreslit před zapnutím transition — stejný trik
+  // jako suppressTransition v useSwipe.ts) skočí na true, což s CSS
+  // `transition: opacity` na obou vrstvách rozjede skutečný cross-fade.
+  const [fadeTransition, setFadeTransition] = useState<{ direction: 'next' | 'prev'; progressing: boolean } | null>(
+    null,
+  );
+  const fadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (fadeTimer.current !== null) clearTimeout(fadeTimer.current);
+    };
+  }, []);
+
+  const runFade = useCallback(
+    (direction: 'next' | 'prev') => {
+      const target = direction === 'next' ? nextItem : prevItem;
+      const after = direction === 'next' ? onSwipeNext : onSwipePrev;
+      if (!target || !after) return;
+      setFadeTransition({ direction, progressing: false });
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setFadeTransition((cur) => (cur ? { ...cur, progressing: true } : cur));
+        });
+      });
+      fadeTimer.current = setTimeout(() => {
+        after();
+        setFadeTransition(null);
+      }, FADE_MS);
+    },
+    [nextItem, prevItem, onSwipeNext, onSwipePrev],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      advance(direction, transition) {
+        if (transition === 'slide') triggerAdvance(direction);
+        else runFade(direction);
+      },
+    }),
+    [triggerAdvance, runFade],
+  );
 
   useEffect(() => {
     resetZoom();
@@ -95,12 +163,20 @@ export function Stage({
 
   // Táhnutí dolů (swipe-to-close) bledne úměrně vzdálenosti — vizuální signál,
   // že puštění zavře. Nikdy pod 0.4, ať fotka úplně nezmizí před release.
-  const currentOpacity = dragOffsetY > 0 ? Math.max(0.4, 1 - dragOffsetY / 400) : 1;
+  // Cross-fade auto-advance má přednost — fadeTransition.progressing řídí
+  // opacity current dlaždice symetricky k overlay níž.
+  const currentOpacity = fadeTransition
+    ? fadeTransition.progressing
+      ? 0
+      : 1
+    : dragOffsetY > 0
+      ? Math.max(0.4, 1 - dragOffsetY / 400)
+      : 1;
 
   const currentStyle: CSSProperties = {
     transform: `translateX(${dragOffsetX}px) translateY(${dragOffsetY}px)`,
     opacity: currentOpacity,
-    transition,
+    transition: fadeTransition ? `opacity ${FADE_MS}ms ease` : transition,
   };
   const prevStyle: CSSProperties = {
     transform: `translateX(calc(-100% + ${dragOffsetX}px))`,
@@ -110,6 +186,8 @@ export function Stage({
     transform: `translateX(calc(100% + ${dragOffsetX}px))`,
     transition,
   };
+
+  const fadeItem = fadeTransition && (fadeTransition.direction === 'next' ? nextItem : prevItem);
 
   return (
     <div
@@ -138,6 +216,15 @@ export function Stage({
           <ImageLoader src={nextItem.fullSrc} placeholderSrc={nextItem.thumbSrc} alt="" zoom={1} />
         </div>
       )}
+      {fadeItem && (
+        <div
+          className="wpview-stage__slide"
+          style={{ opacity: fadeTransition?.progressing ? 1 : 0, transition: `opacity ${FADE_MS}ms ease` }}
+          aria-hidden="true"
+        >
+          <ImageLoader src={fadeItem.fullSrc} placeholderSrc={fadeItem.thumbSrc} alt="" zoom={1} />
+        </div>
+      )}
     </div>
   );
-}
+});

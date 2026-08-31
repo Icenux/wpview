@@ -6,6 +6,7 @@ import { useSettings } from './state/useSettings';
 import { useWindow } from './data/useWindow';
 import { usePreload } from './view/usePreload';
 import { Stage } from './view/Stage';
+import type { StageHandle } from './view/Stage';
 import { Slideshow } from './present/Slideshow';
 import { useFullscreen } from './present/useFullscreen';
 import { useKeyboard } from './gestures/useKeyboard';
@@ -52,6 +53,7 @@ export function WpView(props: WpViewProps) {
   const { settings, setSettings, settingsOpen, setSettingsOpen } = useSettings(props);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<StageHandle>(null);
   useFullscreen(containerRef);
 
   const [cropOpenFor, setCropOpenFor] = useState<string | null>(null);
@@ -222,6 +224,16 @@ export function WpView(props: WpViewProps) {
     setChromeVisible((prev) => !prev);
   }, []);
 
+  // 'none' potřebuje jen okamžitou změnu indexu, žádnou animaci — o tu se
+  // stará jen Stage (přes ref), a jen pro 'fade'/'slide'.
+  const handlePresentAdvance = useCallback(() => {
+    if (settings.slideshowTransition === 'none') {
+      goNext();
+      return;
+    }
+    stageRef.current?.advance('next', settings.slideshowTransition);
+  }, [goNext, settings.slideshowTransition]);
+
   // Žádné vlastní menu — jen záměr s pozicí, ať si consumer (klidně tím
   // vlastním, bohatším menu, které už má pro fotku jinde v appce) vykreslí,
   // co uzná za vhodné.
@@ -253,6 +265,7 @@ export function WpView(props: WpViewProps) {
   return (
     <div ref={containerRef} className="wpview" data-theme={settings.theme}>
       <Stage
+        ref={stageRef}
         item={currentItem}
         displaySrc={displaySrc}
         prevItem={prevItem}
@@ -311,7 +324,7 @@ export function WpView(props: WpViewProps) {
         active={isPresenting}
         intervalMs={settings.slideshowMs}
         canAdvance={canGoNext}
-        onAdvance={goNext}
+        onAdvance={handlePresentAdvance}
         onExit={() => setIsPresenting(false)}
       />
 

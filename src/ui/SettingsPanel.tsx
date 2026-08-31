@@ -42,6 +42,19 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
         />
       </label>
       <label className="wpview-settings-panel__row">
+        <span>Slideshow transition</span>
+        <select
+          value={settings.slideshowTransition}
+          onChange={(e) =>
+            onChange({ ...settings, slideshowTransition: e.target.value as Settings['slideshowTransition'] })
+          }
+        >
+          <option value="fade">Fade</option>
+          <option value="slide">Slide</option>
+          <option value="none">None (cut)</option>
+        </select>
+      </label>
+      <label className="wpview-settings-panel__row">
         <span>Theme</span>
         <select
           value={settings.theme}

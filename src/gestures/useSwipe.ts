@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 
 interface UseSwipeOptions {
@@ -28,6 +28,12 @@ interface UseSwipeResult {
   isDragging: boolean;
   /** Když true, Stage MUSÍ vypnout CSS transition na tenhle jeden render — používá se přesně na snímek, kdy se po dojetí swipe přehazuje index a offset skáče zpátky na 0 (viz settle). Bez toho by se to jedno přeřazení vizuálně "vrátilo". */
   suppressTransition: boolean;
+  /**
+   * Spustí STEJNOU dojíždějící animaci jako dokončený swipe, ale bez prstu —
+   * pro programové přehození (slideshow s transitionType: 'slide', viz
+   * Stage.tsx). Bez `canSwipeNext`/`onSwipeNext` (podle směru) nic neudělá.
+   */
+  triggerAdvance: (direction: 'next' | 'prev') => void;
 }
 
 type Axis = 'horizontal' | 'vertical' | null;
@@ -81,6 +87,33 @@ export function useSwipe(
   const optsRef = useRef({ onSwipeNext, onSwipePrev, onSwipeDown, onTap, canSwipeNext, canSwipePrev, threshold, downThreshold, tapThreshold });
   optsRef.current = { onSwipeNext, onSwipePrev, onSwipeDown, onTap, canSwipeNext, canSwipePrev, threshold, downThreshold, tapThreshold };
 
+  // Dojede z aktuální živé pozice do `target` (±šířka stage, tj. fotka úplně
+  // mimo) se zapnutou CSS transition (isDragging=false ji povolí), pak zavolá
+  // `after` (obvykle onSwipeNext/Prev — přehodí index u consumera) a ve
+  // STEJNÉM tiku odskočí offset zpátky na 0 s dočasně vypnutou transition
+  // (suppressTransition), ať se nově přeřazená "current" dlaždice neanimuje
+  // ze své staré pozice do 0 — matematicky sedí přesně tam, kde právě
+  // "dojela" (viz Stage.tsx transformy). Nezávislé na pointer efektu níž —
+  // volá ji jak endDrag (prst), tak triggerAdvance (slideshow, bez prstu).
+  const settle = useCallback((target: number, after: () => void) => {
+    activePointerId.current = null;
+    axis.current = null;
+    setIsDragging(false);
+    setDragOffsetX(target);
+    settleTimer.current = setTimeout(() => {
+      after();
+      setSuppressTransition(true);
+      setDragOffsetX(0);
+      setDragOffsetY(0);
+      // Dva rAF: první doručí prohlížeči snímek s transition:none, teprve
+      // druhý ji zase povolí — jeden rAF někdy stihne oboje sloučit do
+      // jednoho commitu a transition by se na příštím tažení nevypnula.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setSuppressTransition(false));
+      });
+    }, SWIPE_SETTLE_MS);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (settleTimer.current !== null) clearTimeout(settleTimer.current);
@@ -97,32 +130,6 @@ export function useSwipe(
       setIsDragging(false);
       setDragOffsetX(0);
       setDragOffsetY(0);
-    }
-
-    // Dojede z aktuální živé pozice do `target` (±šířka stage, tj. fotka
-    // úplně mimo) se zapnutou CSS transition (isDragging=false ji povolí),
-    // pak zavolá `after` (obvykle onSwipeNext/Prev — přehodí index u
-    // consumera) a ve STEJNÉM tiku odskočí offset zpátky na 0 s dočasně
-    // vypnutou transition (suppressTransition), ať se nově přeřazená
-    // "current" dlaždice neanimuje ze své staré pozice do 0 — matematicky
-    // sedí přesně tam, kde právě "dojela" (viz Stage.tsx transformy).
-    function settle(target: number, after: () => void) {
-      activePointerId.current = null;
-      axis.current = null;
-      setIsDragging(false);
-      setDragOffsetX(target);
-      settleTimer.current = setTimeout(() => {
-        after();
-        setSuppressTransition(true);
-        setDragOffsetX(0);
-        setDragOffsetY(0);
-        // Dva rAF: první doručí prohlížeči snímek s transition:none, teprve
-        // druhý ji zase povolí — jeden rAF někdy stihne oboje sloučit do
-        // jednoho commitu a transition by se na příštím tažení nevypnula.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => setSuppressTransition(false));
-        });
-      }, SWIPE_SETTLE_MS);
     }
 
     function onPointerDown(e: PointerEvent) {
@@ -217,7 +224,19 @@ export function useSwipe(
     // optsRef carries the latest callbacks/flags — only re-attach listeners
     // when the element or disabled-ness actually changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ref, disabled]);
+  }, [ref, disabled, settle]);
 
-  return { dragOffsetX, dragOffsetY, isDragging, suppressTransition };
+  const triggerAdvance = useCallback(
+    (direction: 'next' | 'prev') => {
+      const el = ref.current;
+      if (!el) return;
+      const width = el.clientWidth || 1;
+      const { onSwipeNext: next, onSwipePrev: prev, canSwipeNext: hasNext, canSwipePrev: hasPrev } = optsRef.current;
+      if (direction === 'next' && hasNext && next) settle(-width, next);
+      else if (direction === 'prev' && hasPrev && prev) settle(width, prev);
+    },
+    [ref, settle],
+  );
+
+  return { dragOffsetX, dragOffsetY, isDragging, suppressTransition, triggerAdvance };
 }

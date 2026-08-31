@@ -36,6 +36,8 @@ export type EditPatch =
 export interface Settings {
   /** default 4000 */
   slideshowMs: number;
+  /** default 'fade' */
+  slideshowTransition: 'none' | 'fade' | 'slide';
   /** default 2 */
   doubleTapZoom: number;
   /** default 'system' */
