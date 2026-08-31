@@ -163,6 +163,17 @@
 .wpview-rating-stars__picker {
   display: flex;
   gap: 2px;
+  /* position/left/bottom are set inline (measured via getBoundingClientRect —
+     see RatingStars.tsx) so it opens as a popover above the toggle button,
+     escaping .wpview-toolbar's overflow-y: hidden (needed for its own
+     horizontal scroll — see the toolbar overflow fix) instead of pushing the
+     toolbar's own row open. */
+  z-index: 10;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--wpview-surface);
+  border: 1px solid var(--wpview-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
 .wpview-rating-stars__star {
