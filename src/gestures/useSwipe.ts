@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { hitsVideoControls } from './videoControls';
 
 interface UseSwipeOptions {
   onSwipeNext?: () => void;
@@ -133,6 +134,7 @@ export function useSwipe(
     }
 
     function onPointerDown(e: PointerEvent) {
+      if (hitsVideoControls(e)) return;
       activePointerCount.current += 1;
       if (activePointerCount.current > 1) {
         // Druhý prst dorazil uprostřed gesta -> vzdáváme se ve prospěch pinche.

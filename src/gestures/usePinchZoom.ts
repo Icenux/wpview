@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
+import { hitsVideoControls } from './videoControls';
 
 interface UsePinchZoomOptions {
   onZoomChange?: (scale: number) => void;
@@ -75,6 +76,7 @@ export function usePinchZoom(
     }
 
     function onPointerDown(e: PointerEvent) {
+      if (hitsVideoControls(e)) return;
       pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (pointers.current.size === 2) {
         // Druhý prst dorazil uprostřed panování jedním prstem -> přebírá to pinch.

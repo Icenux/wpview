@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useSwipe } from '../../src/gestures/useSwipe';
 
@@ -216,5 +216,26 @@ describe('useSwipe / vertical (swipe-to-close)', () => {
 
     await vi.waitFor(() => expect(onSwipePrev).toHaveBeenCalledTimes(1));
     expect(onSwipeDown).not.toHaveBeenCalled();
+  });
+});
+
+describe('useSwipe vs native video controls', () => {
+  it('does not capture the pointer when pointerdown hits the controls strip of a <video>', () => {
+    const container = document.createElement('div');
+    const video = document.createElement('video');
+    video.controls = true;
+    video.getBoundingClientRect = () => ({ top: 0, bottom: 300, left: 0, right: 400, width: 400, height: 300, x: 0, y: 0, toJSON() {} });
+    container.appendChild(video);
+    document.body.appendChild(container);
+    container.setPointerCapture = vi.fn();
+
+    renderHook(() => useSwipe({ current: container }, {}));
+
+    video.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 50, clientY: 290 }));
+    expect(container.setPointerCapture).not.toHaveBeenCalled();
+
+    video.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 2, clientX: 50, clientY: 100 }));
+    expect(container.setPointerCapture).toHaveBeenCalledWith(2);
+    container.remove();
   });
 });
