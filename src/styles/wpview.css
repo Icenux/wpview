@@ -349,6 +349,13 @@
   background: #000;
 }
 
+/* Video se zastaví nad toolbarem, ať nativní ovládání (play, posuvník) není
+   přikryté. S photobarem už je celá scéna zkrácená, tam to netřeba. */
+.wpview--chrome:not(.wpview--photobar) .wpview-stage__video {
+  height: calc(100% - 58px);
+  align-self: flex-start;
+}
+
 /* Název souboru vč. přípony — součást "chrome", mizí s toolbarem. */
 .wpview-filename {
   position: absolute;
