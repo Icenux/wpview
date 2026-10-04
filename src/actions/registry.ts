@@ -14,6 +14,9 @@ export const ICON = {
   trash: 'M6 7h12l-1 13a2 2 0 01-2 2H9a2 2 0 01-2-2L6 7zM9 4h6l1 2H8l1-2z',
   info: 'M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z',
   play: 'M8 5v14l11-7z',
+  stop: 'M6 6h12v12H6z',
+  photos:
+    'M4 5h4v14H4V5zm6-1h4v16h-4V4zm6 1h4v14h-4V5z',
   close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
 } as const;
 

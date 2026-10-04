@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { WpView } from '@wpview';
 import type { Capabilities, EditPatch, ItemState, ViewerItem } from '@wpview';
 import { MOCK_ITEMS, MOCK_ITEM_STATE } from './mock-items';
@@ -7,6 +7,43 @@ import { MOCK_ITEMS, MOCK_ITEM_STATE } from './mock-items';
 // v reálné gallery byla stránkovaná infinite query. Menší než MOCK_ITEM_COUNT,
 // aby šlo reálně vidět useWindow/onRequestMore v akci.
 const WINDOW_STEP = 6;
+
+const AVAILABLE_TAGS = [
+  { id: 'travel', label: 'Travel' },
+  { id: 'sunset', label: 'Sunset' },
+  { id: 'family', label: 'Family' },
+  { id: 'work', label: 'Work' },
+];
+
+/** Krátký lokálně vygenerovaný klip (canvas -> MediaRecorder), nic se nestahuje. */
+function makeMockVideo(): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof MediaRecorder === 'undefined') return resolve(null);
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 360;
+    const ctx = canvas.getContext('2d');
+    if (!ctx || !canvas.captureStream) return resolve(null);
+    const recorder = new MediaRecorder(canvas.captureStream(30));
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.onstop = () => resolve(URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })));
+    const start = performance.now();
+    const draw = () => {
+      const t = (performance.now() - start) / 1000;
+      ctx.fillStyle = `hsl(${(t * 90) % 360} 60% 40%)`;
+      ctx.fillRect(0, 0, 640, 360);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(320 + Math.cos(t * 4) * 200, 180 + Math.sin(t * 4) * 100, 30, 0, Math.PI * 2);
+      ctx.fill();
+      if (t < 2.5) requestAnimationFrame(draw);
+      else recorder.stop();
+    };
+    recorder.start();
+    draw();
+  });
+}
 
 const CAPABILITIES: Capabilities = {
   rate: true,
@@ -25,6 +62,12 @@ export function App() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [windowStart, setWindowStart] = useState(0);
   const [windowEnd, setWindowEnd] = useState(WINDOW_STEP);
+  useEffect(() => {
+    void makeMockVideo().then((url) => {
+      if (!url) return;
+      setItems((prev) => prev.map((it) => (it.type === 'video' ? { ...it, fullSrc: url } : it)));
+    });
+  }, []);
   const [log, setLog] = useState<string[]>([]);
 
   const pushLog = useCallback((line: string) => {
@@ -148,6 +191,7 @@ export function App() {
             index={localIndex}
             itemState={itemState}
             capabilities={CAPABILITIES}
+            availableTags={AVAILABLE_TAGS}
             hasMore={{ prev: windowStart > 0, next: windowEnd < items.length }}
             onIndexChange={handleIndexChange}
             onRate={handleRate}

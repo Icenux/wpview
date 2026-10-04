@@ -5,6 +5,8 @@ export type {
   EditPatch,
   ItemState,
   Settings,
+  SlideshowTransition,
+  TagOption,
   ViewerItem,
   WpViewProps,
 } from './contract/types';

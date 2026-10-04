@@ -8,11 +8,14 @@ import { usePreload } from './view/usePreload';
 import { Stage } from './view/Stage';
 import type { StageHandle } from './view/Stage';
 import { Slideshow } from './present/Slideshow';
+import { nextSlideshowIndex } from './present/sequence';
+import { getFilename } from './view/filename';
 import { useFullscreen } from './present/useFullscreen';
 import { useKeyboard } from './gestures/useKeyboard';
 import { CropCanvas } from './edit/CropCanvas';
 import { rotateImage } from './edit/rotate';
 import { Toolbar } from './ui/Toolbar';
+import { PhotoBar } from './ui/PhotoBar';
 import { SettingsPanel } from './ui/SettingsPanel';
 import { IconButton } from './ui/IconButton';
 import {
@@ -36,6 +39,7 @@ export function WpView(props: WpViewProps) {
     itemState,
     capabilities,
     hasMore,
+    availableTags,
     onIndexChange,
     onRate,
     onFavorite,
@@ -57,7 +61,10 @@ export function WpView(props: WpViewProps) {
   useFullscreen(containerRef);
 
   const [cropOpenFor, setCropOpenFor] = useState<string | null>(null);
-  const [isPresenting, setIsPresenting] = useState(false);
+  const [isPresenting, setIsPresenting] = useState(
+    () => settings.autoplaySlideshow && capabilities?.present === true,
+  );
+  const [photoBarOpen, setPhotoBarOpen] = useState(false);
   // Ťuknutí na fotku schová/vrátí křížek + toolbar — stejný vzorec jako
   // mobilní galerie. Klávesnice, swipe-down a Escape fungují bez ohledu na
   // tenhle stav, jen se vizuálně schová chrome.
@@ -147,6 +154,18 @@ export function WpView(props: WpViewProps) {
     [currentItem, capabilities, handlers, getDisplayState, setOptimistic],
   );
 
+  // Přidání i odebrání tagu je ten samý toggle; optimisticky se přepne hned.
+  const handleToggleTag = useCallback(
+    (tagId: string) => {
+      if (!currentItem) return;
+      const current = getDisplayState(currentItem.id).tags ?? [];
+      const next = current.includes(tagId) ? current.filter((t) => t !== tagId) : [...current, tagId];
+      setOptimistic(currentItem.id, { tags: next });
+      emitTagToggle(capabilities, handlers, currentItem.id, tagId);
+    },
+    [currentItem, capabilities, handlers, getDisplayState, setOptimistic],
+  );
+
   const handleDelete = useCallback(() => {
     if (!currentItem) return;
     emitDelete(capabilities, handlers, currentItem.id);
@@ -224,15 +243,27 @@ export function WpView(props: WpViewProps) {
     setChromeVisible((prev) => !prev);
   }, []);
 
-  // 'none' potřebuje jen okamžitou změnu indexu, žádnou animaci — o tu se
-  // stará jen Stage (přes ref), a jen pro 'fade'/'slide'.
-  const handlePresentAdvance = useCallback(() => {
-    if (settings.slideshowTransition === 'none') {
-      goNext();
-      return;
+  // Vrací false, když není kam postoupit (Slideshow se pak sama ukončí).
+  // Sousední cíl jde přes Stage.advance (u 'slide' dojíždějící carousel),
+  // nesousední (shuffle/loop/filtr) přes Stage.jumpTo — 'none' = okamžitý řez.
+  const handlePresentAdvance = useCallback((): boolean => {
+    const target = nextSlideshowIndex(items, index, settings, hasMore?.next === true);
+    if (target === null) return false;
+    if (target === 'wait') return true;
+    const transition = settings.slideshowTransition;
+    if (transition === 'none') {
+      onIndexChange(target);
+    } else if (target === index + 1) {
+      stageRef.current?.advance('next', transition);
+    } else {
+      stageRef.current?.jumpTo(items[target]!, transition, () => onIndexChange(target));
     }
-    stageRef.current?.advance('next', settings.slideshowTransition);
-  }, [goNext, settings.slideshowTransition]);
+    return true;
+  }, [items, index, settings, hasMore, onIndexChange]);
+
+  const handleVideoEnded = useCallback(() => {
+    if (isPresenting && !handlePresentAdvance()) setIsPresenting(false);
+  }, [isPresenting, handlePresentAdvance]);
 
   // Žádné vlastní menu — jen záměr s pozicí, ať si consumer (klidně tím
   // vlastním, bohatším menu, které už má pro fotku jinde v appce) vykreslí,
@@ -260,10 +291,14 @@ export function WpView(props: WpViewProps) {
   const displayState = getDisplayState(currentItem.id);
   const editEntry = state.edit[currentItem.id];
   const displaySrc = editEntry?.blobUrl ?? currentItem.fullSrc;
-  const canGoNext = index < items.length - 1 || hasMore?.next === true;
+  const filename = getFilename(currentItem);
 
   return (
-    <div ref={containerRef} className="wpview" data-theme={settings.theme}>
+    <div
+      ref={containerRef}
+      className={`wpview${photoBarOpen ? ' wpview--photobar' : ''}${chromeVisible ? ' wpview--chrome' : ''}`}
+      data-theme={settings.theme}
+    >
       <Stage
         ref={stageRef}
         item={currentItem}
@@ -277,7 +312,18 @@ export function WpView(props: WpViewProps) {
         onTap={handleStageTap}
         onContextMenu={onContextMenu ? handleStageContextMenu : undefined}
         swipeDisabled={!!cropOpenFor}
+        autoplayVideo={settings.autoplayVideo || isPresenting}
+        muteVideo={isPresenting}
+        onVideoEnded={handleVideoEnded}
       />
+
+      {chromeVisible && filename && (
+        <div className="wpview-filename" title={filename}>
+          {filename}
+        </div>
+      )}
+
+      {photoBarOpen && <PhotoBar items={items} index={index} onSelect={onIndexChange} />}
 
       {onClose && chromeVisible && (
         <div className="wpview-close-button">
@@ -296,6 +342,8 @@ export function WpView(props: WpViewProps) {
           showTags={isActionEnabled('tag', capabilities, handlers)}
           tagIds={displayState.tags ?? []}
           onRemoveTag={handleRemoveTag}
+          onToggleTag={handleToggleTag}
+          tagOptions={availableTags}
           showRotate={isActionEnabled('rotate', capabilities, handlers)}
           onRotateLeft={handleRotateLeft}
           onRotateRight={handleRotateRight}
@@ -308,6 +356,8 @@ export function WpView(props: WpViewProps) {
           showPresent={capabilities?.present === true}
           isPresenting={isPresenting}
           onTogglePresent={handleTogglePresent}
+          photoBarOpen={photoBarOpen}
+          onTogglePhotoBar={() => setPhotoBarOpen((o) => !o)}
           onOpenSettings={() => setSettingsOpen(!settingsOpen)}
         />
       )}
@@ -323,7 +373,7 @@ export function WpView(props: WpViewProps) {
       <Slideshow
         active={isPresenting}
         intervalMs={settings.slideshowMs}
-        canAdvance={canGoNext}
+        holdForVideo={currentItem.type === 'video'}
         onAdvance={handlePresentAdvance}
         onExit={() => setIsPresenting(false)}
       />

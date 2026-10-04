@@ -40,6 +40,7 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  transition: bottom 0.25s ease;
   /* Belt-and-suspenders with .wpview's touch-action: none (spec says it
      should already intersect down to here) — set directly on the element
      that actually owns the pointerdown/pointermove listeners, so a real
@@ -250,6 +251,13 @@
   padding: 16px;
   background: var(--wpview-surface);
   border-left: 1px solid var(--wpview-border);
+  overflow-y: auto;
+}
+
+.wpview-settings-panel__row.wpview-settings-panel__row--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
 }
 
 .wpview-settings-panel__row {
@@ -331,4 +339,154 @@
   width: 40px;
   height: 40px;
   border-radius: 999px;
+}
+
+/* Video v carouselu: vyplní slide stejně jako fotka (object-fit: contain). */
+.wpview-stage__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* Název souboru vč. přípony — součást "chrome", mizí s toolbarem. */
+.wpview-filename {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 64px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--wpview-surface);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Photobar: hlavní fotka se zmenší, pás miniatur sedí nad toolbarem
+   (nebo u spodku, když je toolbar schovaný ťuknutím). */
+.wpview--photobar .wpview-stage {
+  bottom: 84px;
+}
+
+.wpview--photobar.wpview--chrome .wpview-stage {
+  bottom: 140px;
+}
+
+.wpview-photobar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 50% - polovina aktuální miniatury: i první/poslední fotka jde vycentrovat. */
+  padding: 0 calc(50% - 40px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--wpview-bg);
+  transition: bottom 0.25s ease;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+
+.wpview-photobar::-webkit-scrollbar {
+  display: none;
+}
+
+.wpview--chrome .wpview-photobar {
+  bottom: 56px;
+}
+
+.wpview-photobar__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  height: 52px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--wpview-surface-hover);
+  overflow: hidden;
+  opacity: 0.65;
+  cursor: pointer;
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.wpview-photobar__thumb--current {
+  height: 76px;
+  opacity: 1;
+  border-color: var(--wpview-accent);
+}
+
+.wpview-photobar__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wpview-photobar__badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 0 3px #000;
+}
+
+/* Tag picker popover */
+.wpview-tag-picker__popover {
+  z-index: 10;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--wpview-surface);
+  border: 1px solid var(--wpview-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.wpview-tag-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.wpview-tag-picker__option {
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wpview-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wpview-tag-picker__option:hover {
+  background: var(--wpview-surface-hover);
+}
+
+.wpview-tag-picker__option--on {
+  color: var(--wpview-accent);
+}
+
+.wpview-tag-picker__form {
+  display: flex;
+  gap: 6px;
+}
+
+.wpview-tag-picker__form input {
+  flex: 1;
+  min-width: 0;
 }

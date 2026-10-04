@@ -1,7 +1,9 @@
 import { ACTIONS, ICON } from '../actions/registry';
 import { IconButton } from './IconButton';
 import { RatingStars } from './RatingStars';
+import type { TagOption } from '../contract/types';
 import { TagChips } from './TagChips';
+import { TagPicker } from './TagPicker';
 
 interface ToolbarProps {
   showRating: boolean;
@@ -15,6 +17,8 @@ interface ToolbarProps {
   showTags: boolean;
   tagIds: string[];
   onRemoveTag?: ((tagId: string) => void) | undefined;
+  onToggleTag?: ((tagId: string) => void) | undefined;
+  tagOptions?: TagOption[] | undefined;
 
   showRotate: boolean;
   onRotateLeft?: (() => void) | undefined;
@@ -33,6 +37,9 @@ interface ToolbarProps {
   isPresenting: boolean;
   onTogglePresent?: (() => void) | undefined;
 
+  photoBarOpen: boolean;
+  onTogglePhotoBar?: (() => void) | undefined;
+
   onOpenSettings?: (() => void) | undefined;
 }
 
@@ -50,6 +57,8 @@ export function Toolbar({
   showTags,
   tagIds,
   onRemoveTag,
+  onToggleTag,
+  tagOptions = [],
   showRotate,
   onRotateLeft,
   onRotateRight,
@@ -62,6 +71,8 @@ export function Toolbar({
   showPresent,
   isPresenting,
   onTogglePresent,
+  photoBarOpen,
+  onTogglePhotoBar,
   onOpenSettings,
 }: ToolbarProps) {
   return (
@@ -76,7 +87,16 @@ export function Toolbar({
             onClick={() => onToggleFavorite?.()}
           />
         )}
-        {showTags && <TagChips tagIds={tagIds} onRemove={onRemoveTag} />}
+        {showTags && onToggleTag && (
+          <TagPicker tagIds={tagIds} options={tagOptions} onToggle={onToggleTag} />
+        )}
+        {showTags && (
+          <TagChips
+            tagIds={tagIds}
+            onRemove={onRemoveTag}
+            labels={Object.fromEntries(tagOptions.filter((t) => t.label).map((t) => [t.id, t.label!]))}
+          />
+        )}
       </div>
       <div className="wpview-toolbar__group">
         {showRotate && (
@@ -88,10 +108,18 @@ export function Toolbar({
         {showCrop && (
           <IconButton label={ACTIONS.crop.label} iconPath={ACTIONS.crop.iconPath} onClick={() => onCrop?.()} />
         )}
+        {onTogglePhotoBar && (
+          <IconButton
+            label="Photo bar"
+            iconPath={ICON.photos}
+            active={photoBarOpen}
+            onClick={() => onTogglePhotoBar()}
+          />
+        )}
         {showPresent && (
           <IconButton
             label={ACTIONS.present.label}
-            iconPath={ACTIONS.present.iconPath}
+            iconPath={isPresenting ? ICON.stop : ACTIONS.present.iconPath}
             active={isPresenting}
             onClick={() => onTogglePresent?.()}
           />

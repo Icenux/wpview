@@ -16,6 +16,7 @@ interface WpViewProps {
   itemState: Record<string, ItemState>;   // aktuální pravda (rating/tags/favorite) z consumeru
   capabilities?: Capabilities;            // co se zobrazí; nevyplněné = false
   hasMore?: { prev: boolean; next: boolean };  // pro windowing
+  availableTags?: { id: string; label?: string }[];  // nabídka pro tlačítko Tags
 
   // Settings — dvě nezávislé osy, obě controlled/uncontrolled (viz sémantika):
   settings?: Partial<Settings>;           // controlled hodnoty, když je s onSettingsChange
@@ -41,6 +42,8 @@ interface WpViewProps {
 ```ts
 interface ViewerItem {
   id: string;
+  type?: 'image' | 'video';         // default 'image'
+  filename?: string;                // vč. přípony, zobrazuje se nahoře
   thumbSrc: string;
   fullSrc: string;
   width?: number;
@@ -66,7 +69,12 @@ type EditPatch =
 
 interface Settings {
   slideshowMs: number;                          // default 4000
-  slideshowTransition: 'none' | 'fade' | 'slide'; // default 'fade'
+  slideshowTransition: 'none' | 'fade' | 'slide' | 'zoom' | 'flip' | 'blur'; // default 'fade'
+  slideshowLoop: boolean;                       // default false
+  slideshowShuffle: boolean;                    // default false
+  slideshowContent: 'all' | 'photos' | 'videos'; // default 'all'
+  autoplaySlideshow: boolean;                   // default false
+  autoplayVideo: boolean;                       // default false
   doubleTapZoom: number;                        // default 2
   theme: 'dark' | 'light' | 'system';           // default 'system'
 }
@@ -118,6 +126,28 @@ vodorovný posun); `'none'` přehodí index okamžitě, bez animace. Ve všech
 třech případech u `'fade'`/`'slide'` platí totéž pravidlo jako u
 dokončeného swipe: `onIndexChange` se zavolá až PO animaci, ne v okamžiku,
 kdy uplyne `slideshowMs`.
+
+**Další přechody.** Kromě `'fade'`/`'slide'`/`'none'` jsou `'zoom'`, `'flip'`
+(3D otočení) a `'blur'` (rozostření) — všechny overlay přechody, `onIndexChange`
+jde až po nich. Nesousední cíl (shuffle, loop, přeskočené položky) se u `'slide'`
+animuje jako `'fade'`.
+
+**Slideshow pořadí.** `slideshowShuffle`, `slideshowLoop` a `slideshowContent`
+(vyloučení videí/fotek) pracují jen nad oknem `items` (viz windowing) — shuffle
+i loop se drží v okně. Na konci okna s `hasMore.next` slideshow čeká na další
+okno. Video se ve slideshow nečasuje, přejde se po jeho konci.
+
+**Video.** `ViewerItem.type: 'video'` — `fullSrc` je URL videa, `thumbSrc`
+poster. `autoplayVideo` ho po otevření spustí (ve slideshow vždy, muted).
+`autoplaySlideshow` spustí slideshow po otevření (vyžaduje capability `present`).
+
+**Tagy z lišty.** `availableTags?: { id, label? }[]` je nabídka pro tlačítko
+Tags; přiřazení i odebrání je `onTagToggle(id, tagId)` (za capability `tag`).
+
+**Photobar.** Tlačítko v liště zobrazí pás miniatur pod fotkou (aktuální
+uprostřed); klik na miniaturu = `onIndexChange`. **Název souboru** (vč.
+přípony: `ViewerItem.filename` → `meta.filename` → konec URL) se ukazuje nahoře
+spolu s ostatním chrome.
 
 **Settings — dvě nezávislé osy.** Každá je zvlášť controlled nebo uncontrolled
 podle toho, jestli dodáš dvojici prop + handler:

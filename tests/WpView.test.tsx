@@ -407,3 +407,105 @@ describe('WpView edit flow', () => {
     expect(fetchMock.mock.calls[1]?.[0]).toMatch(/^blob:/);
   });
 });
+
+describe('WpView photobar, tags, filename, transitions', () => {
+  const named: ViewerItem[] = [
+    { id: 'a', thumbSrc: 'a-thumb', fullSrc: 'https://example.com/a.jpg', meta: { filename: 'IMG_1.jpg' } },
+    { id: 'b', thumbSrc: 'b-thumb', fullSrc: 'https://example.com/b.jpg' },
+  ];
+
+  it('shows the filename with extension while chrome is visible and hides it with the chrome', () => {
+    render(<WpView {...baseProps({ items: named })} />);
+    expect(screen.getByText('IMG_1.jpg')).toBeInTheDocument();
+
+    const stage = document.querySelector('.wpview-stage') as HTMLElement;
+    firePointer(stage, 'pointerdown', { clientX: 150, clientY: 150 });
+    firePointer(stage, 'pointerup', { clientX: 150, clientY: 150 });
+    expect(screen.queryByText('IMG_1.jpg')).not.toBeInTheDocument();
+  });
+
+  it('photobar toggles from the toolbar and selecting a thumb emits onIndexChange', () => {
+    const onIndexChange = vi.fn();
+    render(<WpView {...baseProps({ items: named, onIndexChange })} />);
+    expect(document.querySelector('.wpview-photobar')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Photo bar'));
+    expect(document.querySelector('.wpview--photobar')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Photo 2'));
+    expect(onIndexChange).toHaveBeenCalledWith(1);
+  });
+
+  it('tag picker toggles an offered tag through the registry (and respects the capability gate)', () => {
+    const onTagToggle = vi.fn();
+    render(
+      <WpView
+        {...baseProps({
+          capabilities: { tag: true },
+          onTagToggle,
+          availableTags: [{ id: 't1', label: 'Travel' }],
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Tags'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Travel' }));
+    expect(onTagToggle).toHaveBeenCalledWith('a', 't1');
+  });
+
+  it('slideshow button swaps to the stop icon while presenting', () => {
+    render(<WpView {...baseProps({ capabilities: { present: true } })} />);
+    const btn = screen.getByLabelText('Slideshow');
+    const before = btn.querySelector('path')!.getAttribute('d');
+    fireEvent.click(btn);
+    expect(btn.querySelector('path')!.getAttribute('d')).not.toBe(before);
+    expect(btn).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('autoplaySlideshow starts presenting on open', () => {
+    render(
+      <WpView
+        {...baseProps({
+          capabilities: { present: true },
+          settings: { autoplaySlideshow: true },
+          onSettingsChange: vi.fn(),
+        })}
+      />,
+    );
+    expect(screen.getByLabelText('Slideshow')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it.each(['zoom', 'flip', 'blur'] as const)("'%s' defers the index change until the transition ends", async (t) => {
+    const onIndexChange = vi.fn();
+    render(
+      <WpView
+        {...baseProps({
+          capabilities: { present: true },
+          settings: { slideshowMs: 30, slideshowTransition: t },
+          onSettingsChange: vi.fn(),
+          onIndexChange,
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText('Slideshow'));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(onIndexChange).not.toHaveBeenCalled();
+    await vi.waitFor(() => expect(onIndexChange).toHaveBeenCalledWith(1), { timeout: 1000 });
+  });
+
+  it('renders a <video> for video items', () => {
+    const vids: ViewerItem[] = [{ id: 'v', type: 'video', thumbSrc: 'p', fullSrc: 'https://e.com/v.mp4' }];
+    render(<WpView {...baseProps({ items: vids })} />);
+    expect(document.querySelector('video')).toHaveAttribute('src', 'https://e.com/v.mp4');
+  });
+
+  it('starting the slideshow on an already shown video plays it muted (autoPlay attribute alone would not)', () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+    const vids: ViewerItem[] = [{ id: 'v', type: 'video', thumbSrc: 'p', fullSrc: 'https://e.com/v.mp4' }];
+    render(<WpView {...baseProps({ items: vids, capabilities: { present: true } })} />);
+    expect(play).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText('Slideshow'));
+    expect(play).toHaveBeenCalled();
+    expect((document.querySelector('video') as HTMLVideoElement).muted).toBe(true);
+    play.mockRestore();
+  });
+});

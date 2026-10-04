@@ -10,7 +10,7 @@ export function usePreload(items: ViewerItem[], index: number, radius = 1): void
       const item = items[index + offset];
       if (!item) continue;
       const img = new Image();
-      img.src = item.fullSrc;
+      img.src = item.type === 'video' ? item.thumbSrc : item.fullSrc;
       images.push(img);
     }
     return () => {

@@ -54,12 +54,14 @@ function buildItem(index: number): ViewerItem {
 
   return {
     id,
+    // Každá 6. položka je "video" — fullSrc se doplní lokálně generovaným klipem (viz App.tsx).
+    ...(index % 6 === 5 ? { type: 'video' as const } : {}),
     thumbSrc: placeholderSrc(id, 320, thumbHeight),
     fullSrc: placeholderSrc(id, aspect.width, aspect.height),
     width: aspect.width,
     height: aspect.height,
     meta: {
-      filename: `IMG_${1000 + index}.jpg`,
+      filename: index % 6 === 5 ? `MOV_${1000 + index}.webm` : `IMG_${1000 + index}.jpg`,
       taken_at: takenAt.toISOString(),
       camera_make: camera.make,
       camera_model: camera.model,

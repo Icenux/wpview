@@ -3,6 +3,10 @@
 
 export interface ViewerItem {
   id: string;
+  /** default 'image'. U 'video' je `fullSrc` URL videa a `thumbSrc` je poster/náhled. */
+  type?: 'image' | 'video';
+  /** Název souboru vč. přípony (zobrazuje se v horní liště). Fallback: `meta.filename`, pak poslední segment URL `fullSrc`. */
+  filename?: string;
   thumbSrc: string;
   fullSrc: string;
   width?: number;
@@ -17,6 +21,15 @@ export interface ItemState {
   tags?: string[];
   favorite?: boolean;
 }
+
+/** Tag, který consumer nabízí k přiřazení (wpview vokabulář tagů jinak nezná). */
+export interface TagOption {
+  id: string;
+  /** Zobrazený text; chybí => `id`. */
+  label?: string;
+}
+
+export type SlideshowTransition = 'none' | 'fade' | 'slide' | 'zoom' | 'flip' | 'blur';
 
 export interface Capabilities {
   rate?: boolean;
@@ -37,7 +50,17 @@ export interface Settings {
   /** default 4000 */
   slideshowMs: number;
   /** default 'fade' */
-  slideshowTransition: 'none' | 'fade' | 'slide';
+  slideshowTransition: SlideshowTransition;
+  /** Po poslední položce okna začít znovu od první. default false */
+  slideshowLoop: boolean;
+  /** Náhodné pořadí (v rámci okna `items`). default false */
+  slideshowShuffle: boolean;
+  /** Co se ve slideshow přehrává. default 'all' */
+  slideshowContent: 'all' | 'photos' | 'videos';
+  /** Spustit slideshow hned po otevření (vyžaduje capability `present`). default false */
+  autoplaySlideshow: boolean;
+  /** Video se po otevření samo spustí. default false */
+  autoplayVideo: boolean;
   /** default 2 */
   doubleTapZoom: number;
   /** default 'system' */
@@ -54,6 +77,8 @@ export interface WpViewProps {
   /** Co se zobrazí; nevyplněné = false. */
   capabilities?: Capabilities;
   hasMore?: { prev: boolean; next: boolean };
+  /** Nabídka tagů pro tlačítko Tags v liště (capability `tag` + `onTagToggle`). */
+  availableTags?: TagOption[];
 
   // Settings — dvě nezávislé osy, obě controlled/uncontrolled (viz CONTRACT.md sémantika).
   settings?: Partial<Settings>;
