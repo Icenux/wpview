@@ -69,6 +69,7 @@ export function App() {
     });
   }, []);
   const [log, setLog] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pushLog = useCallback((line: string) => {
     setLog((prev) => [line, ...prev].slice(0, 20));
@@ -203,7 +204,16 @@ export function App() {
             onContextMenu={handleContextMenu}
             onRequestMore={handleRequestMore}
             onClose={handleClose}
+            settingsOpen={settingsOpen}
+            onSettingsOpenChange={setSettingsOpen}
           />
+          <button
+            type="button"
+            style={{ position: 'fixed', top: 12, left: 12, zIndex: 10 }}
+            onClick={() => setSettingsOpen((o) => !o)}
+          >
+            Settings (consumer)
+          </button>
         </div>
       )}
 

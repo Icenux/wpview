@@ -358,7 +358,6 @@ export function WpView(props: WpViewProps) {
           onTogglePresent={handleTogglePresent}
           photoBarOpen={photoBarOpen}
           onTogglePhotoBar={() => setPhotoBarOpen((o) => !o)}
-          onOpenSettings={() => setSettingsOpen(!settingsOpen)}
         />
       )}
 

@@ -40,7 +40,6 @@ interface ToolbarProps {
   photoBarOpen: boolean;
   onTogglePhotoBar?: (() => void) | undefined;
 
-  onOpenSettings?: (() => void) | undefined;
 }
 
 /**
@@ -73,7 +72,6 @@ export function Toolbar({
   onTogglePresent,
   photoBarOpen,
   onTogglePhotoBar,
-  onOpenSettings,
 }: ToolbarProps) {
   return (
     <div className="wpview-toolbar">
@@ -137,11 +135,6 @@ export function Toolbar({
             iconPath={ACTIONS.delete.iconPath}
             onClick={() => onDelete?.()}
           />
-        )}
-        {onOpenSettings && (
-          <button type="button" className="wpview-toolbar__settings" onClick={onOpenSettings} aria-label="Settings">
-            ⚙
-          </button>
         )}
       </div>
     </div>

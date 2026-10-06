@@ -45,8 +45,8 @@ contract/ → state,data (hooks) → view,gestures,present,edit → ui/ → WpVi
 - **Settings — dvě nezávislé controlled/uncontrolled osy.** *Persistence:*
   dvojice `settings` + `onSettingsChange` → controlled, wpview se `localStorage`
   NEDOTKNE; jinak fallback na `localStorage` (prefix `wpview:`). *Otevírání
-  panelu:* dvojice `settingsOpen` + `onSettingsOpenChange` → controlled; jinak
-  řídí gear uvnitř. Osy jsou nezávislé. Pravidlo: dodaná dvojice prop+handler =
+  panelu:* dvojice `settingsOpen` + `onSettingsOpenChange` → panel otevírá
+  consumer; wpview samo žádný gear/tlačítko nastavení nemá. Osy jsou nezávislé. Pravidlo: dodaná dvojice prop+handler =
   převzato consumerem, wpview si to sám neřeší.
 - **Kontrakt:** `src/contract/types.ts` je source of truth, `CONTRACT.md` jeho
   zrcadlo. Měň oba spolu.

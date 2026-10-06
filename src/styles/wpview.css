@@ -279,16 +279,6 @@
   cursor: pointer;
 }
 
-.wpview-toolbar__settings {
-  border: none;
-  background: none;
-  color: var(--wpview-fg);
-  font-size: 16px;
-  cursor: pointer;
-  width: 36px;
-  height: 36px;
-}
-
 .wpview-crop-canvas {
   position: absolute;
   inset: 0;

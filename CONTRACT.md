@@ -157,8 +157,8 @@ podle toho, jestli dodáš dvojici prop + handler:
   chceš (vlastní store, backend, sdílené settings consumeru). Nedodáš →
   uncontrolled: wpview ukládá do `localStorage` pod prefix `wpview:`.
 - *Odkud se panel otevírá.* Dodáš `settingsOpen` **i** `onSettingsOpenChange`
-  → controlled: panel otevíráš vlastním tlačítkem kdekoli ve svém UI. Nedodáš →
-  uncontrolled: panel řídí gear uvnitř wpview.
+  → controlled: panel otevíráš vlastním tlačítkem kdekoli ve svém UI. wpview
+  samo **žádné tlačítko nastavení nemá** — bez této dvojice se panel nedá otevřít.
 
 Osy jsou nezávislé — můžeš převzít jen persistenci, jen otevírání, obojí, nebo
 nic. Bez čehokoli funguje wpview out-of-the-box.
