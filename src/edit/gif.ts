@@ -16,6 +16,20 @@ export type GifOp =
   | { type: 'rotate'; deg: 90 | 180 | 270 }
   | { type: 'crop'; rect: { x: number; y: number; w: number; h: number } };
 
+/**
+ * Limity proti škodlivým/rozbitým souborům — rozměry a počet snímků čteme ze
+ * vstupu, kterému se nedá věřit (GIF s plátnem 65535×65535 by chtěl ~17 GB).
+ * Při překročení se úprava odmítne chybou; ve WpView ji chytí handler editace.
+ */
+export const GIF_LIMITS = {
+  /** Max. plocha plátna i jednoho snímku (px). 40 Mpx ≈ 160 MB RGBA. */
+  maxPixels: 40_000_000,
+  /** Max. počet snímků. */
+  maxFrames: 3000,
+  /** Max. součet pixelů přes všechny snímky (práce dekodéru + enkodéru). */
+  maxTotalPixels: 600_000_000,
+} as const;
+
 /** GIF87a/GIF89a podle magických bajtů ("GIF8"). */
 export function isGifBytes(bytes: Uint8Array): boolean {
   return bytes.length >= 6 && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38;
@@ -166,6 +180,7 @@ function decodeGif(bytes: Uint8Array): GifDecoder {
   r.u8(); // background color index — prohlížeče ho ignorují
   r.u8(); // pixel aspect ratio
   if (width === 0 || height === 0) throw new Error('wpview: empty GIF');
+  if (width * height > GIF_LIMITS.maxPixels) throw new Error('wpview: GIF is too large to edit');
   const globalPalette = packed & 0x80 ? r.bytes(3 * (1 << ((packed & 7) + 1))) : null;
 
   let loop: number | null = null;
@@ -208,6 +223,7 @@ function decodeGif(bytes: Uint8Array): GifDecoder {
       const flags = r.u8();
       const palette = flags & 0x80 ? r.bytes(3 * (1 << ((flags & 7) + 1))) : globalPalette;
       if (!palette) throw new Error('wpview: GIF without a palette');
+      if (w * h > GIF_LIMITS.maxPixels) throw new Error('wpview: GIF frame is too large to edit');
       const minCode = r.u8();
       const compressed = r.subBlocks();
       if (minCode < 2 || minCode > 8) throw new Error('wpview: corrupt GIF');
@@ -262,6 +278,8 @@ function decodeGif(bytes: Uint8Array): GifDecoder {
 // ---------------------------------------------------------------------------
 
 function clampInt(value: number, min: number, max: number): number {
+  // NaN/Infinity z rect by jinak prošly až do velikosti pole.
+  if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
@@ -577,6 +595,10 @@ export function transformGif(bytes: Uint8Array, op: GifOp): Uint8Array {
 
   let count = 0;
   for (const frame of gif.frames) {
+    if (count >= GIF_LIMITS.maxFrames) throw new Error('wpview: GIF has too many frames to edit');
+    if ((count + 1) * gif.width * gif.height > GIF_LIMITS.maxTotalPixels) {
+      throw new Error('wpview: GIF is too large to edit');
+    }
     if (count === 0) {
       const loop = gif.loop();
       if (loop !== null) {

@@ -202,3 +202,32 @@ function rawFrame(left: number, top: number, w: number, h: number, palette: numb
     0,
   ];
 }
+
+describe('GIF safety limits', () => {
+  /** Hlavička GIFu s libovolným plátnem a jedním prázdným obrázkem — dekodér nesmí nic naalokovat předem. */
+  const header = (w: number, h: number) =>
+    new Uint8Array([...Array.from('GIF89a', (c) => c.charCodeAt(0)), w & 255, w >> 8, h & 255, h >> 8, 0, 0, 0, 0x3b]);
+
+  it('refuses a canvas of 65535×65535 px instead of allocating gigabytes', () => {
+    expect(() => transformGif(header(65535, 65535), { type: 'rotate', deg: 90 })).toThrow(/too large/);
+    expect(() => readGifFrames(header(65535, 65535))).toThrow(/too large/);
+  });
+
+  it('refuses an oversized frame descriptor on a small canvas', () => {
+    const bytes = new Uint8Array([
+      ...Array.from('GIF89a', (c) => c.charCodeAt(0)),
+      2, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255, // plátno 2×2 + 2barevná globální paleta
+      0x2c, 0, 0, 0, 0, 255, 255, 255, 255, 0, // obrázek 65535×65535
+      2, 0, 0x3b,
+    ]);
+    expect(() => readGifFrames(bytes)).toThrow(/too large/);
+  });
+
+  it('treats a non-finite crop rect as the smallest valid crop, not as a huge allocation', () => {
+    const out = readGifFrames(
+      transformGif(gifBytes, { type: 'crop', rect: { x: Number.NaN, y: 0, w: Number.POSITIVE_INFINITY, h: Number.NaN } }),
+    );
+    expect(out.width).toBeGreaterThanOrEqual(1);
+    expect(out.width * out.height).toBeLessThanOrEqual(expected.width * expected.height);
+  });
+});
