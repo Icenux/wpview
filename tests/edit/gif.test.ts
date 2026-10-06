@@ -223,6 +223,17 @@ describe('GIF safety limits', () => {
     expect(() => readGifFrames(bytes)).toThrow(/too large/);
   });
 
+  it('refuses frames bigger than the canvas, so many huge descriptors cannot dodge the total-work cap', () => {
+    const oneFrame = [0x2c, 0, 0, 0, 0, 3, 0, 3, 0, 0, 2, 0]; // 3×3 snímek na plátně 2×2
+    const bytes = new Uint8Array([
+      ...Array.from('GIF89a', (c) => c.charCodeAt(0)),
+      2, 0, 2, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255,
+      ...oneFrame,
+      0x3b,
+    ]);
+    expect(() => readGifFrames(bytes)).toThrow(/larger than the canvas/);
+  });
+
   it('treats a non-finite crop rect as the smallest valid crop, not as a huge allocation', () => {
     const out = readGifFrames(
       transformGif(gifBytes, { type: 'crop', rect: { x: Number.NaN, y: 0, w: Number.POSITIVE_INFINITY, h: Number.NaN } }),

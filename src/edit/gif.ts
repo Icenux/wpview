@@ -223,7 +223,9 @@ function decodeGif(bytes: Uint8Array): GifDecoder {
       const flags = r.u8();
       const palette = flags & 0x80 ? r.bytes(3 * (1 << ((flags & 7) + 1))) : globalPalette;
       if (!palette) throw new Error('wpview: GIF without a palette');
-      if (w * h > GIF_LIMITS.maxPixels) throw new Error('wpview: GIF frame is too large to edit');
+      // Snímek větší než plátno je nestandardní a jeho `w*h` je ze souboru — bez téhle
+      // kontroly by malé plátno s tisíci "obřími" snímky obešlo součtové limity níž.
+      if (w * h > width * height) throw new Error('wpview: GIF frame is larger than the canvas, too large to edit');
       const minCode = r.u8();
       const compressed = r.subBlocks();
       if (minCode < 2 || minCode > 8) throw new Error('wpview: corrupt GIF');
