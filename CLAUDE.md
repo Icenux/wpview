@@ -42,6 +42,9 @@ contract/ → state,data (hooks) → view,gestures,present,edit → ui/ → WpVi
   Na kraji okna volej `onRequestMore`.
 - **Editace:** crop/rotate klient-side v canvasu → `Blob` v `onEdit`. Rotace
   je ztrátová (re-encode) — dokumentovaný kompromis, neřeš jako bug.
+  **Animované GIFy** canvas neumí (jen první snímek) — jdou přes vlastní
+  dekodér/enkodér `edit/gif.ts` po snímcích a zůstanou animované `image/gif`.
+  Nepřidávej na to knihovnu (plugin musí být dep-light).
 - **Settings — dvě nezávislé controlled/uncontrolled osy.** *Persistence:*
   dvojice `settings` + `onSettingsChange` → controlled, wpview se `localStorage`
   NEDOTKNE; jinak fallback na `localStorage` (prefix `wpview:`). *Otevírání
