@@ -323,7 +323,15 @@ export function WpView(props: WpViewProps) {
         </div>
       )}
 
-      {photoBarOpen && <PhotoBar items={items} index={index} onSelect={onIndexChange} />}
+      {photoBarOpen && (
+        <PhotoBar
+          items={items}
+          index={index}
+          onSelect={onIndexChange}
+          hasMore={hasMore}
+          onRequestMore={onRequestMore}
+        />
+      )}
 
       {onClose && chromeVisible && (
         <div className="wpview-close-button">
