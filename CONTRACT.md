@@ -139,6 +139,7 @@ okno. Video se ve slideshow nečasuje, přejde se po jeho konci.
 
 **Video.** `ViewerItem.type: 'video'` — `fullSrc` je URL videa, `thumbSrc`
 poster. `autoplayVideo` ho po otevření spustí (ve slideshow vždy, muted).
+Akce `rotate` a `crop` se u videa nezobrazují (editace je jen pro fotky).
 `autoplaySlideshow` spustí slideshow po otevření (vyžaduje capability `present`).
 
 **Tagy z lišty.** `availableTags?: { id, label? }[]` je nabídka pro tlačítko

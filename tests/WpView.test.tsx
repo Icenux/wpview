@@ -333,6 +333,18 @@ describe('WpView edit flow', () => {
     vi.unstubAllGlobals();
   });
 
+  it('hides rotate and crop for a video item', () => {
+    const videoItems = [{ ...items[0]!, type: 'video' as const }];
+    render(
+      <WpView
+        {...baseProps({ items: videoItems, capabilities: { rotate: true, crop: true }, onEdit: vi.fn() })}
+      />,
+    );
+    expect(screen.queryByLabelText('Rotate right')).toBeNull();
+    expect(screen.queryByLabelText('Rotate left')).toBeNull();
+    expect(screen.queryByLabelText('Crop')).toBeNull();
+  });
+
   it('Rotate right emits an EditPatch with deg 90', async () => {
     const bitmap = { width: 800, height: 600, close: vi.fn() };
     vi.stubGlobal(

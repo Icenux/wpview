@@ -71,6 +71,8 @@ export function WpView(props: WpViewProps) {
   const [chromeVisible, setChromeVisible] = useState(true);
 
   const currentItem = items[index];
+  // Rotate/crop jdou jen přes canvas nad bitmapou — u videa nemají smysl.
+  const isVideoItem = currentItem?.type === 'video';
   const prevItem = items[index - 1];
   const nextItem = items[index + 1];
 
@@ -352,10 +354,10 @@ export function WpView(props: WpViewProps) {
           onRemoveTag={handleRemoveTag}
           onToggleTag={handleToggleTag}
           tagOptions={availableTags}
-          showRotate={isActionEnabled('rotate', capabilities, handlers)}
+          showRotate={isActionEnabled('rotate', capabilities, handlers) && !isVideoItem}
           onRotateLeft={handleRotateLeft}
           onRotateRight={handleRotateRight}
-          showCrop={isActionEnabled('crop', capabilities, handlers)}
+          showCrop={isActionEnabled('crop', capabilities, handlers) && !isVideoItem}
           onCrop={() => setCropOpenFor(currentItem.id)}
           showDelete={isActionEnabled('delete', capabilities, handlers)}
           onDelete={handleDelete}
