@@ -53,6 +53,7 @@ const CAPABILITIES: Capabilities = {
   crop: true,
   delete: true,
   info: true,
+  share: true,
   present: true,
 };
 
@@ -153,6 +154,13 @@ export function App() {
     [pushLog],
   );
 
+  const handleShare = useCallback(
+    (id: string) => {
+      pushLog(`onShare(${id})`);
+    },
+    [pushLog],
+  );
+
   const handleContextMenu = useCallback(
     (id: string, x: number, y: number) => {
       // Reálný consumer by tu otevřel svoje vlastní menu na (x, y) — wpview
@@ -201,6 +209,7 @@ export function App() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onInfoOpen={handleInfoOpen}
+            onShare={handleShare}
             onContextMenu={handleContextMenu}
             onRequestMore={handleRequestMore}
             onClose={handleClose}

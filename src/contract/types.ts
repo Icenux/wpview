@@ -39,6 +39,7 @@ export interface Capabilities {
   crop?: boolean;
   delete?: boolean;
   info?: boolean;
+  share?: boolean;
   present?: boolean;
 }
 
@@ -94,6 +95,8 @@ export interface WpViewProps {
   onDelete?(id: string): void;
   /** Fotka info — jednorázový klik, žádný toggle. wpview nic sám nezobrazuje. */
   onInfoOpen?(id: string): void;
+  /** Sdílení fotky/videa — jednorázový klik. wpview nic nesdílí, dialog i odkaz řeší consumer. */
+  onShare?(id: string): void;
   /** Pravý klik / long-press na fotce — wpview nekreslí žádné menu, jen záměr. */
   onContextMenu?(id: string, x: number, y: number): void;
   onRequestMore?(dir: 'prev' | 'next'): void;

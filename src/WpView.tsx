@@ -24,6 +24,7 @@ import {
   emitEdit,
   emitFavorite,
   emitInfoOpen,
+  emitShare,
   emitRate,
   emitTagToggle,
   isActionEnabled,
@@ -47,6 +48,7 @@ export function WpView(props: WpViewProps) {
     onEdit,
     onDelete,
     onInfoOpen,
+    onShare,
     onContextMenu,
     onRequestMore,
     onClose,
@@ -77,8 +79,8 @@ export function WpView(props: WpViewProps) {
   const nextItem = items[index + 1];
 
   const handlers: ActionHandlers = useMemo(
-    () => ({ onRate, onFavorite, onTagToggle, onEdit, onDelete, onInfoOpen }),
-    [onRate, onFavorite, onTagToggle, onEdit, onDelete, onInfoOpen],
+    () => ({ onRate, onFavorite, onTagToggle, onEdit, onDelete, onInfoOpen, onShare }),
+    [onRate, onFavorite, onTagToggle, onEdit, onDelete, onInfoOpen, onShare],
   );
 
   useWindow({ index, itemsLength: items.length, hasMore, onRequestMore });
@@ -178,6 +180,12 @@ export function WpView(props: WpViewProps) {
   const handleInfoOpen = useCallback(() => {
     if (!currentItem) return;
     emitInfoOpen(capabilities, handlers, currentItem.id);
+  }, [currentItem, capabilities, handlers]);
+
+  // Jednorázový klik — odkaz, dialog i oprávnění řeší consumer.
+  const handleShare = useCallback(() => {
+    if (!currentItem) return;
+    emitShare(capabilities, handlers, currentItem.id);
   }, [currentItem, capabilities, handlers]);
 
   const applyEdit = useCallback(
@@ -363,6 +371,8 @@ export function WpView(props: WpViewProps) {
           onDelete={handleDelete}
           showInfo={isActionEnabled('info', capabilities, handlers)}
           onInfoOpen={handleInfoOpen}
+          showShare={isActionEnabled('share', capabilities, handlers)}
+          onShare={handleShare}
           showPresent={capabilities?.present === true}
           isPresenting={isPresenting}
           onTogglePresent={handleTogglePresent}

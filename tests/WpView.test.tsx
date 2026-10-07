@@ -328,6 +328,32 @@ describe('WpView info (emit-only, no local panel)', () => {
   });
 });
 
+describe('WpView share (emit-only)', () => {
+  it('clicking Share fires onShare with the current item id', () => {
+    const onShare = vi.fn();
+    render(<WpView {...baseProps({ capabilities: { share: true }, onShare })} />);
+    fireEvent.click(screen.getByLabelText('Share'));
+    expect(onShare).toHaveBeenCalledTimes(1);
+    expect(onShare).toHaveBeenCalledWith('a');
+  });
+
+  it('hides Share without the capability or without the handler', () => {
+    const { unmount } = render(<WpView {...baseProps({ capabilities: {}, onShare: vi.fn() })} />);
+    expect(screen.queryByLabelText('Share')).toBeNull();
+    unmount();
+    render(<WpView {...baseProps({ capabilities: { share: true } })} />);
+    expect(screen.queryByLabelText('Share')).toBeNull();
+  });
+
+  it('shows Share for video items too', () => {
+    const videoItems = [{ ...items[0]!, type: 'video' as const }];
+    render(
+      <WpView {...baseProps({ items: videoItems, capabilities: { share: true }, onShare: vi.fn() })} />,
+    );
+    expect(screen.getByLabelText('Share')).toBeTruthy();
+  });
+});
+
 describe('WpView edit flow', () => {
   afterEach(() => {
     vi.unstubAllGlobals();

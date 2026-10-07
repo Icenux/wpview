@@ -33,6 +33,9 @@ interface ToolbarProps {
   showInfo: boolean;
   onInfoOpen?: (() => void) | undefined;
 
+  showShare: boolean;
+  onShare?: (() => void) | undefined;
+
   showPresent: boolean;
   isPresenting: boolean;
   onTogglePresent?: (() => void) | undefined;
@@ -67,6 +70,8 @@ export function Toolbar({
   onDelete,
   showInfo,
   onInfoOpen,
+  showShare,
+  onShare,
   showPresent,
   isPresenting,
   onTogglePresent,
@@ -127,6 +132,13 @@ export function Toolbar({
             label={ACTIONS.info.label}
             iconPath={ACTIONS.info.iconPath}
             onClick={() => onInfoOpen?.()}
+          />
+        )}
+        {showShare && (
+          <IconButton
+            label={ACTIONS.share.label}
+            iconPath={ACTIONS.share.iconPath}
+            onClick={() => onShare?.()}
           />
         )}
         {showDelete && (

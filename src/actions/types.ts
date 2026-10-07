@@ -10,6 +10,7 @@ export interface ActionHandlers {
   onEdit?: WpViewProps['onEdit'];
   onDelete?: WpViewProps['onDelete'];
   onInfoOpen?: WpViewProps['onInfoOpen'];
+  onShare?: WpViewProps['onShare'];
 }
 
 export interface ActionDef {
