@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { EditPatch } from '../contract/types';
-import { canvasToBlob, inferMimeType, loadBitmap } from './encode';
+import { canvasToBlob, editGifBlob, fetchBlob, inferMimeType, isGifBlob } from './encode';
 
 const JPEG_QUALITY = 0.92;
 
@@ -29,7 +29,11 @@ function clamp(value: number, min: number, max: number): number {
 
 /** Ořízne bitmapu na `rect` (v natural-pixelech vstupního obrázku) a vrátí hotový EditPatch. */
 export async function buildCropPatch(fullSrc: string, rect: NaturalRect): Promise<EditPatch> {
-  const bitmap = await loadBitmap(fullSrc);
+  const source = await fetchBlob(fullSrc);
+  if (await isGifBlob(source)) {
+    return { type: 'crop', rect, blob: await editGifBlob(source, { type: 'crop', rect }) };
+  }
+  const bitmap = await createImageBitmap(source);
   try {
     const canvas = new OffscreenCanvas(Math.round(rect.w), Math.round(rect.h));
     const ctx = canvas.getContext('2d');

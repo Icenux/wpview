@@ -57,11 +57,13 @@ function buildItem(index: number): ViewerItem {
     // Každá 6. položka je "video" — fullSrc se doplní lokálně generovaným klipem (viz App.tsx).
     ...(index % 6 === 5 ? { type: 'video' as const } : {}),
     thumbSrc: placeholderSrc(id, 320, thumbHeight),
-    fullSrc: placeholderSrc(id, aspect.width, aspect.height),
+    // Každá 6. položka (od třetí) je animovaný GIF — playground/demo.gif.
+    fullSrc: index % 6 === 2 ? '/demo.gif' : placeholderSrc(id, aspect.width, aspect.height),
     width: aspect.width,
     height: aspect.height,
     meta: {
-      filename: index % 6 === 5 ? `MOV_${1000 + index}.webm` : `IMG_${1000 + index}.jpg`,
+      filename:
+        index % 6 === 5 ? `MOV_${1000 + index}.webm` : index % 6 === 2 ? `ANIM_${1000 + index}.gif` : `IMG_${1000 + index}.jpg`,
       taken_at: takenAt.toISOString(),
       camera_make: camera.make,
       camera_model: camera.model,

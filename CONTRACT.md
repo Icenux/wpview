@@ -99,6 +99,14 @@ výsledek je hotový `Blob` v `onEdit(id, patch)`. wpview ukazuje editovaný blo
 opticky, dokud consumer nedodá nový `fullSrc` pro to `id`. Rotace přes canvas
 re-encode je **ztrátová** — dokumentovaný kompromis, ne bug.
 
+**Animované GIFy se upravují celé.** Rotate i crop se u GIFu (pozná se podle
+obsahu, ne podle přípony) dělají po snímcích a `Blob` v patchi je znovu
+animovaný `image/gif` — stejný počet snímků, zpoždění i smyčka, průhlednost
+zůstává. Canvas to neumí (vidí jen první snímek), proto má wpview vlastní GIF
+dekodér/enkodér (`src/edit/gif.ts`, bez závislostí). Ztráta: GIF má max. 256
+barev na snímek, takže snímky s víc barevnými složeninami se kvantizují;
+průhlednost je jen 1bitová.
+
 **Rotate má dvě tlačítka (doleva/doprava), jednu capability.** `deg: 90` =
 doprava (po směru hodinových ručiček), `deg: 270` = doleva (matematicky -90°,
 ale `EditPatch.deg` drží jen kladné násobky 90). Obě tlačítka gatuje stejná

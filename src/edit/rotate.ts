@@ -1,5 +1,5 @@
 import type { EditPatch } from '../contract/types';
-import { canvasToBlob, inferMimeType, loadBitmap } from './encode';
+import { canvasToBlob, editGifBlob, fetchBlob, inferMimeType, isGifBlob } from './encode';
 
 const JPEG_QUALITY = 0.92;
 
@@ -20,7 +20,12 @@ export async function rotateImage(
   deg: 90 | 180 | 270,
   mimeHintSrc: string = src,
 ): Promise<EditPatch> {
-  const bitmap = await loadBitmap(src);
+  const source = await fetchBlob(src);
+  // Animovaný GIF se otáčí po snímcích — canvas by z něj nechal jen první.
+  if (await isGifBlob(source)) {
+    return { type: 'rotate', deg, blob: await editGifBlob(source, { type: 'rotate', deg }) };
+  }
+  const bitmap = await createImageBitmap(source);
   try {
     const swapDims = deg === 90 || deg === 270;
     const width = swapDims ? bitmap.height : bitmap.width;
