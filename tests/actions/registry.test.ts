@@ -4,6 +4,7 @@ import {
   emitEdit,
   emitFavorite,
   emitInfoOpen,
+  emitShare,
   emitRate,
   emitTagToggle,
   isActionEnabled,
@@ -103,6 +104,16 @@ describe('emit* guards', () => {
     const onInfoOpen = vi.fn();
     emitInfoOpen(caps, { onInfoOpen }, 'a');
     expect(onInfoOpen).toHaveBeenCalledWith('a');
+  });
+
+  it('emitShare forwards only with the share capability and a handler', () => {
+    const onShare = vi.fn();
+    emitShare({ ...caps, share: true }, { onShare }, 'a');
+    expect(onShare).toHaveBeenCalledWith('a');
+
+    emitShare({ ...caps, share: false }, { onShare }, 'b');
+    emitShare({ ...caps, share: true }, {}, 'c');
+    expect(onShare).toHaveBeenCalledTimes(1);
   });
 
   it('a missing handler never throws — it is a silent no-op, same as a missing capability', () => {

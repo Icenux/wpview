@@ -31,6 +31,7 @@ interface WpViewProps {
   onEdit?(id: string, patch: EditPatch): void;
   onDelete?(id: string): void;
   onInfoOpen?(id: string): void;         // jednorázový klik, žádný toggle — viz sémantika
+  onShare?(id: string): void;            // jednorázový klik na Share — emit-only, viz sémantika
   onContextMenu?(id: string, x: number, y: number): void;  // pravý klik / long-press — žádné vlastní menu
   onRequestMore?(dir: 'prev' | 'next'): void;
   onClose?(): void;                       // křížek, swipe dolů, Escape — všechny tři volají tohle
@@ -60,7 +61,7 @@ interface ItemState {
 interface Capabilities {
   rate?: boolean; favorite?: boolean; tag?: boolean;
   rotate?: boolean; crop?: boolean; delete?: boolean;
-  info?: boolean; present?: boolean;
+  info?: boolean; share?: boolean; present?: boolean;
 }
 
 type EditPatch =
@@ -179,6 +180,12 @@ samé, které používá jinde v appce pro tu stejnou fotku). Bez handleru se u
 Info nic neděje (tlačítko samo o sobě zmizí přes capability gate) a u
 context menu **neprojde `preventDefault()`** — prohlížeč ukáže svoje nativní
 menu, protože wpview capability nemá čím to schovat.
+
+**Share je čistě emit-only.** `onShare(id)` se zavolá při každém kliku na
+tlačítko Share (vedle Info) s `id` aktuální položky — foto i video. Tlačítko
+se zobrazí jen s `capabilities.share === true` **a** dodaným `onShare`.
+wpview nic nesdílí: vytvoření odkazu, expirace, schránka, Web Share API i
+dialog jsou věc consumera.
 
 **Zavírání.** Tři nezávislé cesty na `onClose()`: křížek vpravo nahoře
 (zobrazí se jen když je `onClose` dodaný), swipe/tažení dolů přes fotkou, a

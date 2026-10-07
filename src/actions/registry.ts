@@ -13,6 +13,8 @@ export const ICON = {
   crop: 'M6 2v4H2v2h4v10a2 2 0 002 2h10v4h2v-4h4v-2H8V8h10V2H6z',
   trash: 'M6 7h12l-1 13a2 2 0 01-2 2H9a2 2 0 01-2-2L6 7zM9 4h6l1 2H8l1-2z',
   info: 'M12 2a10 10 0 100 20 10 10 0 000-20zm.75 15h-1.5v-6h1.5v6zm0-8h-1.5V7h1.5v2z',
+  share:
+    'M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 0021 5a3 3 0 10-6 0c0 .24.04.47.09.7L8.04 9.81A2.99 2.99 0 006 9a3 3 0 100 6c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 105.84 0c0-1.61-1.31-2.92-2.92-2.92z',
   play: 'M8 5v14l11-7z',
   stop: 'M6 6h12v12H6z',
   photos:
@@ -36,6 +38,7 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
   crop: { id: 'crop', label: 'Crop', iconPath: ICON.crop, hasHandler: (h) => !!h.onEdit },
   delete: { id: 'delete', label: 'Delete', iconPath: ICON.trash, hasHandler: (h) => !!h.onDelete },
   info: { id: 'info', label: 'Info', iconPath: ICON.info, hasHandler: (h) => !!h.onInfoOpen },
+  share: { id: 'share', label: 'Share', iconPath: ICON.share, hasHandler: (h) => !!h.onShare },
   present: { id: 'present', label: 'Slideshow', iconPath: ICON.play, hasHandler: () => true },
 };
 
@@ -110,4 +113,13 @@ export function emitInfoOpen(
 ): void {
   if (!isActionEnabled('info', capabilities, handlers)) return;
   handlers.onInfoOpen?.(id);
+}
+
+export function emitShare(
+  capabilities: Capabilities | undefined,
+  handlers: ActionHandlers,
+  id: string,
+): void {
+  if (!isActionEnabled('share', capabilities, handlers)) return;
+  handlers.onShare?.(id);
 }
