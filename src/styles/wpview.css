@@ -1,0 +1,489 @@
+.wpview {
+  --wpview-bg: #000;
+  --wpview-fg: #f5f5f5;
+  --wpview-fg-muted: #a3a3a3;
+  --wpview-surface: rgba(30, 30, 30, 0.92);
+  --wpview-surface-hover: rgba(255, 255, 255, 0.12);
+  --wpview-accent: #4da3ff;
+  --wpview-border: rgba(255, 255, 255, 0.14);
+
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--wpview-bg);
+  color: var(--wpview-fg);
+  overflow: hidden;
+  touch-action: none;
+}
+
+.wpview[data-theme='light'] {
+  --wpview-bg: #fff;
+  --wpview-fg: #1a1a1a;
+  --wpview-fg-muted: #666;
+  --wpview-surface: rgba(255, 255, 255, 0.92);
+  --wpview-surface-hover: rgba(0, 0, 0, 0.08);
+  --wpview-border: rgba(0, 0, 0, 0.12);
+}
+
+@media (prefers-color-scheme: light) {
+  .wpview[data-theme='system'] {
+    --wpview-bg: #fff;
+    --wpview-fg: #1a1a1a;
+    --wpview-fg-muted: #666;
+    --wpview-surface: rgba(255, 255, 255, 0.92);
+    --wpview-surface-hover: rgba(0, 0, 0, 0.08);
+    --wpview-border: rgba(0, 0, 0, 0.12);
+  }
+}
+
+.wpview-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transition: bottom 0.25s ease;
+  /* Belt-and-suspenders with .wpview's touch-action: none (spec says it
+     should already intersect down to here) — set directly on the element
+     that actually owns the pointerdown/pointermove listeners, so a real
+     touchscreen can't hand a swipe starting here to the browser's own
+     panning/edge-navigation gesture before useSwipe sees it. */
+  touch-action: none;
+}
+
+/* Up to 3 slides (prev/current/next) share the same box and slide across it
+   via transform — NOT flex-laid-out siblings, or translateX would move them
+   relative to each other instead of relative to the stage. */
+.wpview-stage__slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+.wpview-image-loader {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.wpview-image-loader__placeholder,
+.wpview-image-loader__full {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  /* An <img> is natively draggable and long-press-selectable; either can
+     hijack a touch gesture mid-swipe before useSwipe's pointer listeners
+     see the move, on top of the `draggable={false}` already set in JSX. */
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+.wpview-image-loader__full {
+  transition: opacity 0.15s ease;
+}
+
+.wpview-image-loader__placeholder {
+  filter: blur(8px);
+}
+
+.wpview-toolbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--wpview-surface);
+  border-top: 1px solid var(--wpview-border);
+  /* On a narrow phone, rate+favorite+tags+rotate×2+present+info+delete+
+     settings doesn't fit in one row — with no wrap and .wpview's
+     overflow:hidden, whatever didn't fit (settings, being last) was
+     silently clipped off-screen and unreachable. Horizontal scroll keeps
+     every action reachable regardless of how many a consumer enables,
+     without wpview having to guess which one is "least important" to hide. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wpview-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wpview-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wpview-fg);
+  cursor: pointer;
+}
+
+.wpview-icon-button:hover:not(:disabled) {
+  background: var(--wpview-surface-hover);
+}
+
+.wpview-icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.wpview-icon-button--active {
+  color: var(--wpview-accent);
+}
+
+.wpview-rating-stars {
+  display: flex;
+  align-items: center;
+}
+
+.wpview-rating-stars--readonly {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--wpview-fg-muted);
+}
+
+.wpview-rating-stars__picker {
+  display: flex;
+  gap: 2px;
+  /* position/left/bottom are set inline (measured via getBoundingClientRect —
+     see RatingStars.tsx) so it opens as a popover above the toggle button,
+     escaping .wpview-toolbar's overflow-y: hidden (needed for its own
+     horizontal scroll — see the toolbar overflow fix) instead of pushing the
+     toolbar's own row open. */
+  z-index: 10;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: var(--wpview-surface);
+  border: 1px solid var(--wpview-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.wpview-rating-stars__star {
+  border: none;
+  background: none;
+  color: var(--wpview-fg-muted);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.wpview-rating-stars__star--filled {
+  color: var(--wpview-accent);
+}
+
+.wpview-rating-stars__star:disabled {
+  cursor: default;
+}
+
+.wpview-rating-stars__toggle {
+  position: relative;
+  color: var(--wpview-fg-muted);
+}
+
+/* Small numeric badge on the collapsed single-star toggle so the current
+   rating is readable at a glance without expanding the picker. */
+.wpview-rating-stars__badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  min-width: 12px;
+  padding: 0 2px;
+  border-radius: 999px;
+  background: var(--wpview-accent);
+  color: #fff;
+  font-size: 9px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.wpview-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wpview-tag-chips__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--wpview-surface-hover);
+  font-size: 12px;
+}
+
+.wpview-tag-chips__remove {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.wpview-settings-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 56px;
+  width: 260px;
+  max-width: 100%;
+  padding: 16px;
+  background: var(--wpview-surface);
+  border-left: 1px solid var(--wpview-border);
+  overflow-y: auto;
+}
+
+.wpview-settings-panel__row.wpview-settings-panel__row--check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.wpview-settings-panel__row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.wpview-settings-panel__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--wpview-fg);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.wpview-crop-canvas {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wpview-bg);
+}
+
+.wpview-crop-canvas__stage {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.wpview-crop-canvas__image {
+  max-width: 100%;
+  max-height: 100%;
+  user-select: none;
+}
+
+.wpview-crop-canvas__rect {
+  position: absolute;
+  border: 2px solid var(--wpview-accent);
+  background: rgba(77, 163, 255, 0.15);
+  pointer-events: none;
+}
+
+.wpview-crop-canvas__controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--wpview-border);
+}
+
+.wpview-close-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.wpview-close-button .wpview-icon-button {
+  background: var(--wpview-surface);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+}
+
+/* Video v carouselu: vyplní slide stejně jako fotka (object-fit: contain). */
+.wpview-stage__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+
+/* Video se zastaví nad toolbarem, ať nativní ovládání (play, posuvník) není
+   přikryté. S photobarem už je celá scéna zkrácená, tam to netřeba. */
+.wpview--chrome:not(.wpview--photobar) .wpview-stage__video {
+  height: calc(100% - 58px);
+  align-self: flex-start;
+}
+
+/* Název souboru vč. přípony — součást "chrome", mizí s toolbarem. */
+.wpview-filename {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 64px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: var(--wpview-surface);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* Photobar: hlavní fotka se zmenší, pás miniatur sedí nad toolbarem
+   (nebo u spodku, když je toolbar schovaný ťuknutím). */
+.wpview--photobar .wpview-stage {
+  bottom: 84px;
+}
+
+.wpview--photobar.wpview--chrome .wpview-stage {
+  bottom: 140px;
+}
+
+.wpview-photobar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 50% - polovina aktuální miniatury: i první/poslední fotka jde vycentrovat. */
+  padding: 0 calc(50% - 40px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--wpview-bg);
+  transition: bottom 0.25s ease;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+
+.wpview-photobar::-webkit-scrollbar {
+  display: none;
+}
+
+.wpview--chrome .wpview-photobar {
+  bottom: 56px;
+}
+
+.wpview-photobar__thumb {
+  position: relative;
+  flex: 0 0 auto;
+  height: 52px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: var(--wpview-surface-hover);
+  overflow: hidden;
+  opacity: 0.65;
+  cursor: pointer;
+  transition: height 0.2s ease, opacity 0.2s ease;
+}
+
+.wpview-photobar__thumb--current {
+  height: 76px;
+  opacity: 1;
+  border-color: var(--wpview-accent);
+}
+
+.wpview-photobar__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.wpview-photobar__badge {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  font-size: 9px;
+  color: #fff;
+  text-shadow: 0 0 3px #000;
+}
+
+/* Tag picker popover */
+.wpview-tag-picker__popover {
+  z-index: 10;
+  min-width: 200px;
+  max-width: 260px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--wpview-surface);
+  border: 1px solid var(--wpview-border);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.wpview-tag-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 200px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  overflow-y: auto;
+}
+
+.wpview-tag-picker__option {
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wpview-fg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wpview-tag-picker__option:hover {
+  background: var(--wpview-surface-hover);
+}
+
+.wpview-tag-picker__option--on {
+  color: var(--wpview-accent);
+}
+
+.wpview-tag-picker__form {
+  display: flex;
+  gap: 6px;
+}
+
+.wpview-tag-picker__form input {
+  flex: 1;
+  min-width: 0;
+}
