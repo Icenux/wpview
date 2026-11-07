@@ -1,0 +1,19 @@
+name: Notify site
+# When a release is published, tell the Icenux website (Icenux/icenux.github.io) so it rebuilds and shows
+# the new version at once. Uses the organization secret SITE_DISPATCH_TOKEN; without it the site picks the
+# release up with its next scheduled build.
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+
+jobs:
+  notify-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify the Icenux site
+        continue-on-error: true
+        run: gh api repos/Icenux/icenux.github.io/dispatches -f event_type=app-released
+        env:
+          GH_TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
