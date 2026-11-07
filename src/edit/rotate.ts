@@ -4,7 +4,7 @@ import { canvasToBlob, editGifBlob, fetchBlob, inferMimeType, isGifBlob } from '
 const JPEG_QUALITY = 0.92;
 
 /**
- * Re-encode přes canvas je ztrátový (viz CLAUDE.md „dokumentovaný
+ * Re-encode přes canvas je ztrátový (viz CONTRACT.md „dokumentovaný
  * kompromis, neřeš jako bug"). `deg` je vždy násobek 90°, canvas ho aplikuje
  * jako rotaci kolem středu s prohozenými rozměry pro 90/270.
  *

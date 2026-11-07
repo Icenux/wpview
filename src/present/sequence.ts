@@ -14,7 +14,7 @@ function isEligible(item: ViewerItem, content: Settings['slideshowContent']): bo
 /**
  * Čistá funkce — pořadí slideshow (sekvenčně / náhodně, filtr foto/video,
  * opakování). Pracuje jen nad oknem `items`, ne nad celou galerií (viz
- * windowing v CLAUDE.md): shuffle i loop se tedy drží v okně.
+ * windowing v CONTRACT.md): shuffle i loop se tedy drží v okně.
  */
 export function nextSlideshowIndex(
   items: ViewerItem[],
