@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # minor/patch update together in one PR; majors come separately
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # TS 7.0 needs the typescript/@typescript/typescript6 alias, which npm 10 (Node 22) cannot install.
+      # Wait for TS 7.1 (new API, typescript-eslint support) and remove this block then.
+      - dependency-name: typescript
+        versions: ["7.0.x"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ["*"]
