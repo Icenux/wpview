@@ -14,7 +14,6 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
       "@wpview": ["./src/index.ts"]
     }
