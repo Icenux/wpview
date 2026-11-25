@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import { hitsVideoControls } from './videoControls';
 
@@ -86,7 +86,9 @@ export function useSwipe(
   // `canSwipeNext` apod. znovu spustil, listener by se odpojil a znovu
   // připojil uprostřed gesta.
   const optsRef = useRef({ onSwipeNext, onSwipePrev, onSwipeDown, onTap, canSwipeNext, canSwipePrev, threshold, downThreshold, tapThreshold });
-  optsRef.current = { onSwipeNext, onSwipePrev, onSwipeDown, onTap, canSwipeNext, canSwipePrev, threshold, downThreshold, tapThreshold };
+  useLayoutEffect(() => {
+    optsRef.current = { onSwipeNext, onSwipePrev, onSwipeDown, onTap, canSwipeNext, canSwipePrev, threshold, downThreshold, tapThreshold };
+  });
 
   // Dojede z aktuální živé pozice do `target` (±šířka stage, tj. fotka úplně
   // mimo) se zapnutou CSS transition (isDragging=false ji povolí), pak zavolá
@@ -225,7 +227,6 @@ export function useSwipe(
     };
     // optsRef carries the latest callbacks/flags — only re-attach listeners
     // when the element or disabled-ness actually changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ref, disabled, settle]);
 
   const triggerAdvance = useCallback(
