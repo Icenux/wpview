@@ -13,6 +13,8 @@ export default defineConfig({
       name: 'WpView',
       fileName: () => 'wpview.js',
       formats: ['es'],
+      // vite 7+ names the CSS after the package; keep the public ./style.css export stable
+      cssFileName: 'style',
     },
     rollupOptions: {
       external: ['react', 'react-dom', 'react/jsx-runtime'],
