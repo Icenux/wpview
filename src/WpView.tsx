@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { EditPatch, WpViewProps } from './contract/types';
 import { initialState, reducer } from './state/reducer';
 import { useOptimistic } from './state/useOptimistic';
@@ -115,7 +115,9 @@ export function WpView(props: WpViewProps) {
 
   // Revokovat zbylé blob URLs při unmountu wpview celého.
   const editStateRef = useRef(state.edit);
-  editStateRef.current = state.edit;
+  useLayoutEffect(() => {
+    editStateRef.current = state.edit;
+  });
   useEffect(() => {
     return () => {
       for (const entry of Object.values(editStateRef.current)) {

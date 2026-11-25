@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 interface SlideshowProps {
   active: boolean;
@@ -15,8 +15,10 @@ export function Slideshow({ active, intervalMs, holdForVideo, onAdvance, onExit 
   // Callbacky se mění s každým indexem; přes ref se interval kvůli nim nerestartuje.
   const advanceRef = useRef(onAdvance);
   const exitRef = useRef(onExit);
-  advanceRef.current = onAdvance;
-  exitRef.current = onExit;
+  useLayoutEffect(() => {
+    advanceRef.current = onAdvance;
+    exitRef.current = onExit;
+  });
 
   useEffect(() => {
     if (!active || holdForVideo) return;
